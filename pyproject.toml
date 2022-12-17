@@ -1,3 +1,7 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.poetry]
 name = "ruff-lsp"
 version = "0.0.2"
@@ -21,21 +25,28 @@ mypy = "==0.991"
 [tool.ruff]
 line-length = 88
 select = [
-  "E",
-  "F",
-  "W",
-  "Q",
-  "UP",
-  "I",
-  "N",
+    "E",
+    "F",
+    "W",
+    "Q",
+    "UP",
+    "I",
+    "N",
 ]
 target-version = "py37"
-extend-exclude = ["tests/test_data"]
 
 [tool.black]
 line-length = 88
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.mypy]
+files = "ruff_lsp"
+no_implicit_optional = true
+check_untyped_defs = true
 
+[[tool.mypy.overrides]]
+module = [
+    "debugpy.*",
+    "lsprotocol.*",
+    "pygls.*",
+]
+ignore_missing_imports = true
