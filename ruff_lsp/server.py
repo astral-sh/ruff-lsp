@@ -470,13 +470,8 @@ def _get_default_settings(workspace_path: str) -> dict[str, Any]:
         "workspace": uris.from_fs_path(workspace_path),
         "logLevel": "error",
         "args": [],
-        "severity": {
-            "E": "Hint",
-            "W": "Warning",
-        },
         "path": [],
         "interpreter": [sys.executable],
-        "importStrategy": "useBundled",
         "showNotifications": "off",
     }
 
@@ -558,13 +553,6 @@ def _run_tool_on_document(
         # running under that interpreter.
         argv = [TOOL_MODULE]
         use_rpc = True
-    elif settings["importStrategy"] == "useBundled":
-        # If we're loading from the bundle, use the absolute path.
-        argv = [
-            os.fspath(
-                pathlib.Path(__file__).parent.parent / "libs" / "bin" / TOOL_MODULE
-            ),
-        ]
     else:
         # If the interpreter is same as the interpreter running this process then run
         # as module.

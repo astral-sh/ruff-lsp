@@ -11,13 +11,12 @@ ruff-lsp = "ruff_lsp.__main__:main"
 [tool.poetry.dependencies]
 python = "<3.12,>=3.7"
 pygls = ">1.0.0a3"
-ruff = ">0.0.182"
+ruff = "*"
 typing_extensions = "*"
 
 [tool.poetry.dev-dependencies]
-black = "*"
-mypy = "*"
-pytest = "*"
+black = "==22.12.0"
+mypy = "==0.991"
 
 [tool.ruff]
 line-length = 88

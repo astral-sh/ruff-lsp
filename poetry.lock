@@ -97,14 +97,6 @@ perf = ["ipython"]
 testing = ["flake8 (<5)", "flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)", "pytest-perf (>=0.9.2)"]
 
 [[package]]
-name = "iniconfig"
-version = "1.1.1"
-description = "iniconfig: brain-dead simple config-ini parsing"
-category = "dev"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "lsprotocol"
 version = "2022.0.0a9"
 description = "Python implementation of the Language Server Protocol."
@@ -145,14 +137,6 @@ optional = false
 python-versions = "*"
 
 [[package]]
-name = "packaging"
-version = "22.0"
-description = "Core utilities for Python packages"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-
-[[package]]
 name = "pathspec"
 version = "0.10.3"
 description = "Utility library for gitignore style pattern matching of file paths."
@@ -173,21 +157,6 @@ docs = ["furo (>=2022.9.29)", "proselint (>=0.13)", "sphinx (>=5.3)", "sphinx-au
 test = ["appdirs (==1.4.4)", "pytest (>=7.2)", "pytest-cov (>=4)", "pytest-mock (>=3.10)"]
 
 [[package]]
-name = "pluggy"
-version = "1.0.0"
-description = "plugin and hook calling mechanisms for python"
-category = "dev"
-optional = false
-python-versions = ">=3.6"
-
-[package.dependencies]
-importlib-metadata = {version = ">=0.12", markers = "python_version < \"3.8\""}
-
-[package.extras]
-dev = ["pre-commit", "tox"]
-testing = ["pytest", "pytest-benchmark"]
-
-[[package]]
 name = "pygls"
 version = "1.0.0"
 description = "a pythonic generic language server (pronounced like \"pie glass\")."
@@ -204,27 +173,6 @@ dev = ["bandit (==1.7.4)", "flake8 (==4.0.1)", "mypy (==0.961)"]
 docs = ["sphinx (==5.0.1)", "sphinx-rtd-theme (==1.0.0)"]
 test = ["mock (==4.0.3)", "pytest (==7.1.2)", "pytest-asyncio (==0.18.3)"]
 ws = ["websockets (>=10.0.0,<11.0.0)"]
-
-[[package]]
-name = "pytest"
-version = "7.2.0"
-description = "pytest: simple powerful testing with Python"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-
-[package.dependencies]
-attrs = ">=19.2.0"
-colorama = {version = "*", markers = "sys_platform == \"win32\""}
-exceptiongroup = {version = ">=1.0.0rc8", markers = "python_version < \"3.11\""}
-importlib-metadata = {version = ">=0.12", markers = "python_version < \"3.8\""}
-iniconfig = "*"
-packaging = "*"
-pluggy = ">=0.12,<2.0"
-tomli = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
-
-[package.extras]
-testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "xmlschema"]
 
 [[package]]
 name = "ruff"
@@ -285,7 +233,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = "<3.12,>=3.7"
-content-hash = "08999da21470be9af5a8b64ea318402f376b7a7cb6d5b38b717452db581026df"
+content-hash = "839d3c221049b953299a7bc223a520787bbf742271f38fe3242fa67d78b37c83"
 
 [metadata.files]
 attrs = []
@@ -322,10 +270,6 @@ exceptiongroup = [
 importlib-metadata = [
     {file = "importlib_metadata-5.1.0-py3-none-any.whl", hash = "sha256:d84d17e21670ec07990e1044a99efe8d615d860fd176fc29ef5c306068fda313"},
     {file = "importlib_metadata-5.1.0.tar.gz", hash = "sha256:d5059f9f1e8e41f80e9c56c2ee58811450c31984dfa625329ffd7c0dad88a73b"},
-]
-iniconfig = [
-    {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},
-    {file = "iniconfig-1.1.1.tar.gz", hash = "sha256:bc3af051d7d14b2ee5ef9969666def0cd1a000e121eaea580d4a313df4b37f32"},
 ]
 lsprotocol = [
     {file = "lsprotocol-2022.0.0a9-py3-none-any.whl", hash = "sha256:e4bc3d2ed71045f64cbe4d053bd6d45300a77b122b372a383914ce4ddb9c62d4"},
@@ -367,10 +311,6 @@ mypy-extensions = [
     {file = "mypy_extensions-0.4.3-py2.py3-none-any.whl", hash = "sha256:090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d"},
     {file = "mypy_extensions-0.4.3.tar.gz", hash = "sha256:2d82818f5bb3e369420cb3c4060a7970edba416647068eb4c5343488a6c604a8"},
 ]
-packaging = [
-    {file = "packaging-22.0-py3-none-any.whl", hash = "sha256:957e2148ba0e1a3b282772e791ef1d8083648bc131c8ab0c1feba110ce1146c3"},
-    {file = "packaging-22.0.tar.gz", hash = "sha256:2198ec20bd4c017b8f9717e00f0c8714076fc2fd93816750ab48e2c41de2cfd3"},
-]
 pathspec = [
     {file = "pathspec-0.10.3-py3-none-any.whl", hash = "sha256:3c95343af8b756205e2aba76e843ba9520a24dd84f68c22b9f93251507509dd6"},
     {file = "pathspec-0.10.3.tar.gz", hash = "sha256:56200de4077d9d0791465aa9095a01d421861e405b5096955051deefd697d6f6"},
@@ -379,17 +319,9 @@ platformdirs = [
     {file = "platformdirs-2.6.0-py3-none-any.whl", hash = "sha256:1a89a12377800c81983db6be069ec068eee989748799b946cce2a6e80dcc54ca"},
     {file = "platformdirs-2.6.0.tar.gz", hash = "sha256:b46ffafa316e6b83b47489d240ce17173f123a9b9c83282141c3daf26ad9ac2e"},
 ]
-pluggy = [
-    {file = "pluggy-1.0.0-py2.py3-none-any.whl", hash = "sha256:74134bbf457f031a36d68416e1509f34bd5ccc019f0bcc952c7b909d06b37bd3"},
-    {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
-]
 pygls = [
     {file = "pygls-1.0.0-py3-none-any.whl", hash = "sha256:3414594ac29ff3ab990f004c675d1077e4e2659eae5cc3ae67cc6fa4d861e342"},
     {file = "pygls-1.0.0.tar.gz", hash = "sha256:c2a1c22e30028f7ca9d3f0a04da8eef29f0f1701bdbd97d8614d8e1e6711f336"},
-]
-pytest = [
-    {file = "pytest-7.2.0-py3-none-any.whl", hash = "sha256:892f933d339f068883b6fd5a459f03d85bfcb355e4981e146d2c7616c21fef71"},
-    {file = "pytest-7.2.0.tar.gz", hash = "sha256:c4014eb40e10f11f355ad4e3c2fb2c6c6d1919c73f3b5a433de4708202cade59"},
 ]
 ruff = [
     {file = "ruff-0.0.185-py3-none-macosx_10_7_x86_64.whl", hash = "sha256:53bb588df47941a4f8c79a0db08d30b72d9eaffc258f6031d2ea09e1820ff504"},
