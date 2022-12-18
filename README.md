@@ -23,7 +23,6 @@ For Visual Studio Code, check out the [Ruff VS Code extension](https://github.co
 
 ![](https://user-images.githubusercontent.com/1309177/205175987-82e23e21-14bb-467d-9ef0-027f24b75865.gif)
 
-
 ## Installation and Usage
 
 `ruff-lsp` is available as [`ruff-lsp`](https://pypi.org/project/ruff-lsp/) on PyPI:
@@ -100,7 +99,7 @@ require('lspconfig').ruff_lsp.setup {
 
 Upon successful installation, you should see Ruff's diagnostics surfaced directly in your editor:
 
-![](https://user-images.githubusercontent.com/1309177/208271650-e5fd6a1a-c63a-4c5e-98d3-607baedc2f48.png)
+![Code Actions available in Neovim](https://user-images.githubusercontent.com/1309177/208278707-25fa37e4-079d-4597-ad35-b95dba066960.png)
 
 ### Example: Sublime Text
 
