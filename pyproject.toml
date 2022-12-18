@@ -5,9 +5,29 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "ruff-lsp"
 version = "0.0.2"
-description = ""
+description = "A Language Server Protocol implementation for Ruff."
 authors = ["Charlie Marsh <charlie.r.marsh@gmail.com>"]
+maintainers = ["Charlie Marsh <charlie.r.marsh@gmail.com>"]
 license = "MIT"
+readme = "README.md"
+repository = "https://github.com/charliermarsh/ruff-lsp"
+keywords = ["ruff", "lsp", "language-server", "language-server-protocol", "python"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Utilities",
+]
 
 [tool.poetry.scripts]
 ruff-lsp = "ruff_lsp.__main__:main"
@@ -25,12 +45,6 @@ mypy = "==0.991"
 [tool.ruff]
 line-length = 88
 select = [
-    "E",
-    "F",
-    "W",
-    "Q",
-    "UP",
-    "I",
     "N",
 ]
 target-version = "py37"
