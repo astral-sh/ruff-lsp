@@ -4,6 +4,26 @@ A [Language Server Protocol](https://microsoft.github.io/language-server-protoco
 [Ruff](https://github.com/charliermarsh/ruff), an extremely fast Python linter and code transformation
 tool, written in Rust.
 
+Enables Ruff to be used in any editor that supports the LSP, including Neovim, Emacs, Sublime Text,
+and more.
+
+For Visual Studio Code users, check out the [Ruff VS Code extension](https://github.com/charliermarsh/ruff-vscode).
+
+## Highlights
+
+### "Quick Fix" actions for auto-fixable violations (like unused imports)
+
+![](https://user-images.githubusercontent.com/1309177/205176932-44cfc03a-120f-4bad-b710-612bdd7765d6.gif)
+
+### "Fix all": automatically fix all auto-fixable violations
+
+![](https://user-images.githubusercontent.com/1309177/205175763-cf34871d-5c05-4abf-9916-440afc82dbf8.gif)
+
+### "Organize Imports": `isort`-compatible import sorting
+
+![](https://user-images.githubusercontent.com/1309177/205175987-82e23e21-14bb-467d-9ef0-027f24b75865.gif)
+
+
 ## Installation and Usage
 
 `ruff-lsp` is available as [`ruff-lsp`](https://pypi.org/project/ruff-lsp/) on PyPI:
@@ -77,7 +97,7 @@ Upon successful installation, you should see Ruff's diagnostics surfaced directl
 
 ![](https://user-images.githubusercontent.com/1309177/208271650-e5fd6a1a-c63a-4c5e-98d3-607baedc2f48.png)
 
-### Example: SublimeText
+### Example: Sublime Text
 
 To use `ruff-lsp` with Sublime Text, install Sublime Text's [LSP](https://github.com/sublimelsp/LSP)
 package, then add something like the following to `LSP.sublime-settings`:
