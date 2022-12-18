@@ -4,8 +4,8 @@ A [Language Server Protocol](https://microsoft.github.io/language-server-protoco
 [Ruff](https://github.com/charliermarsh/ruff), an extremely fast Python linter and code transformation
 tool, written in Rust.
 
-Enables Ruff to be used in any editor that supports the LSP, including [Neovim](#example--neovim),
-[Sublime Text](#example--sublime-text), Emacs and more.
+Enables Ruff to be used in any editor that supports the LSP, including [Neovim](#example-neovim),
+[Sublime Text](#example-sublime-text), Emacs and more.
 
 For Visual Studio Code, check out the [Ruff VS Code extension](https://github.com/charliermarsh/ruff-vscode).
 
