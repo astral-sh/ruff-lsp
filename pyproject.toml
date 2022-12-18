@@ -33,9 +33,9 @@ classifiers = [
 ruff-lsp = "ruff_lsp.__main__:main"
 
 [tool.poetry.dependencies]
-python = "<3.12,>=3.7"
+python = ">=3.7,<3.12"
 pygls = ">1.0.0a3"
-ruff = "*"
+ruff = ">0.0.150"
 typing_extensions = "*"
 
 [tool.poetry.dev-dependencies]

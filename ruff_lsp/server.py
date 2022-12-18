@@ -13,6 +13,7 @@ import sysconfig
 from typing import Any, Sequence, cast
 
 from lsprotocol.types import (
+    CODE_ACTION_RESOLVE,
     EXIT,
     INITIALIZE,
     TEXT_DOCUMENT_CODE_ACTION,
@@ -228,7 +229,7 @@ def apply_autofix(arguments: tuple[TextDocument]):
     ),
 )
 def code_action(params: CodeActionParams) -> list[CodeAction] | None:
-
+    """LSP handler for textDocument/codeAction request."""
     text_document = LSP_SERVER.workspace.get_document(params.text_document.uri)
 
     if utils.is_stdlib_file(text_document.path):
@@ -329,6 +330,25 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     )
 
     return actions if actions else None
+
+
+@LSP_SERVER.feature(CODE_ACTION_RESOLVE)
+def resolve_code_action(params: CodeAction) -> CodeAction:
+    """LSP handler for codeAction/resolve request."""
+    text_document = LSP_SERVER.workspace.get_document(cast(str, params.data))
+
+    if params.kind == CodeActionKind.SourceOrganizeImports:
+        # Generate the "Ruff: Organize Imports" edit
+        params.edit = _create_workspace_edits(
+            text_document, _formatting_helper(text_document, select="I001") or []
+        )
+    elif params.kind == CodeActionKind.SourceFixAll:
+        # Generate the "Ruff: Fix All" edit.
+        params.edit = _create_workspace_edits(
+            text_document, _formatting_helper(text_document) or []
+        )
+
+    return params
 
 
 def _formatting_helper(
