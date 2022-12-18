@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  release:
+    types: [ published ]
+
+env:
+  PYTHON_VERSION: "3.7"
+  POETRY_VERSION: "1.1.15"
+
+jobs:
+  release:
+    runs-on: "ubuntu-18.04"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: ${{ env.POETRY_VERSION }}
+      - name: Install dependencies
+        run: poetry build
+      - name: Publish to PyPi
+        if: "startsWith(github.ref, 'refs/tags/')"
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.RUFF_LSP_TOKEN }}
+        run: |
+          pip install --upgrade twine
+          twine upload --skip-existing dist/*
