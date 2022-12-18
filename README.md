@@ -98,9 +98,22 @@ Upon successful installation, you should see errors surfaced directly in your ed
 
 ![](https://user-images.githubusercontent.com/1309177/208266375-331ad8e5-8ac1-4735-bca8-07734eb38536.png)
 
+## Settings
+
+The exact mechanism by which settings will be passed to `ruff-lsp` will vary by editor. However,
+the following settings are supported:
+
+| Settings         | Default | Description                                                                            |
+|------------------|---------|----------------------------------------------------------------------------------------|
+| args             | `[]`    | Custom arguments passed to `ruff`. E.g `"args": ["--config=/path/to/pyproject.toml"]`. |
+| logLevel         | `error` | Sets the tracing level for the extension.                                              |
+| path             | `[]`    | Setting to provide custom `ruff` executable. E.g. `["~/global_env/ruff"]`.             |
+| interpreter      | `[]`    | Path to a Python interpreter to use to run the linter server.                          |
+| showNotification | `off`   | Setting to control when a notification is shown.                                       |
+
 ## Development
 
-`ruf-lsp` uses Poetry for environment management and packaging. To get started, clone the
+`ruff-lsp` uses Poetry for environment management and packaging. To get started, clone the
 repository, install Poetry, and run `poetry install`.
 
 To automatically format the codebase, run: `make format`.

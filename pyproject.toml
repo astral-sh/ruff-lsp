@@ -45,6 +45,12 @@ mypy = "==0.991"
 [tool.ruff]
 line-length = 88
 select = [
+    "E",
+    "F",
+    "W",
+    "Q",
+    "UP",
+    "I",
     "N",
 ]
 target-version = "py37"
