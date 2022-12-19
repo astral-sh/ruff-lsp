@@ -56,6 +56,8 @@ USER_DEFAULTS: dict[str, str] = {}
 WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
 INTERPRETER_PATHS: dict[str, str] = {}
 
+CLIENT_CAPABILITIES: dict[str, Any] = {}
+
 MAX_WORKERS = 5
 LSP_SERVER = server.LanguageServer(
     name="Ruff",
@@ -66,7 +68,6 @@ LSP_SERVER = server.LanguageServer(
 TOOL_MODULE = "ruff"
 TOOL_DISPLAY = "Ruff"
 TOOL_ARGS = ["--no-cache", "--no-fix", "--quiet", "--format", "json", "-"]
-
 
 ###
 # Linting.
@@ -272,7 +273,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 params.context.only
                 and len(params.context.only) == 1
                 and kind in params.context.only
-            ):
+            ) or not _is_code_action_resolve_supported():
                 results = _formatting_helper(document, select="I001")
                 if results is not None:
                     return [
@@ -297,7 +298,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 params.context.only
                 and len(params.context.only) == 1
                 and kind in params.context.only
-            ):
+            ) or not _is_code_action_resolve_supported():
                 return [
                     CodeAction(
                         title="Ruff: Fix All",
@@ -515,6 +516,10 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
 @LSP_SERVER.feature(INITIALIZE)
 def initialize(params: InitializeParams) -> None:
     """LSP handler for initialize request."""
+    CLIENT_CAPABILITIES[
+        "text_document.code_action.resolve_support"
+    ] = params.capabilities.text_document.code_action.resolve_support
+
     # Extract `settings` from the initialization options.
     user_settings = (params.initialization_options or {}).get(  # type: ignore
         "settings",
@@ -616,6 +621,10 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
         }
 
     return WORKSPACE_SETTINGS[str(key)]
+
+
+def _is_code_action_resolve_supported():
+    return CLIENT_CAPABILITIES["text_document.code_action.resolve_support"] is not None
 
 
 ###
