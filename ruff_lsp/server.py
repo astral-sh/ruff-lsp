@@ -8,6 +8,7 @@ import copy
 import json
 import os
 import pathlib
+import re
 import sys
 import sysconfig
 from typing import Any, Sequence, cast
@@ -20,6 +21,7 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_DID_SAVE,
+    TEXT_DOCUMENT_HOVER,
     AnnotatedTextEdit,
     CodeAction,
     CodeActionKind,
@@ -32,7 +34,11 @@ from lsprotocol.types import (
     DidCloseTextDocumentParams,
     DidOpenTextDocumentParams,
     DidSaveTextDocumentParams,
+    Hover,
+    HoverParams,
     InitializeParams,
+    MarkupContent,
+    MarkupKind,
     MessageType,
     OptionalVersionedTextDocumentIdentifier,
     Position,
@@ -179,6 +185,41 @@ def _parse_output_using_regex(content: str) -> list[Diagnostic]:
 
 def _get_severity(*_codes: list[str]) -> DiagnosticSeverity:
     return DiagnosticSeverity.Warning
+
+
+NOQA_REGEX = re.compile(r"(?i:# noqa)(?::\s?(?P<codes>([A-Z]+[0-9]+(?:[,\s]+)?)+))?")
+CODE_REGEX = re.compile(r"[A-Z]{1,3}[0-9]{3}")
+
+
+@LSP_SERVER.feature(TEXT_DOCUMENT_HOVER)
+def hover(params: HoverParams) -> Hover | None:
+    """LSP handler for textDocument/hover request."""
+    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    match = NOQA_REGEX.search(document.lines[params.position.line])
+    if not match:
+        return None
+
+    codes = match.group("codes")
+    if not codes:
+        return None
+
+    codes_start = match.start("codes")
+    for match in CODE_REGEX.finditer(codes):
+        start, end = match.span()
+        start += codes_start
+        end += codes_start
+        if start <= params.position.character < end:
+            code = match.group()
+            result = _run_subcommand_on_document(document, ["--explain", code])
+            if result.stdout:
+                return Hover(
+                    contents=MarkupContent(
+                        kind=MarkupKind.Markdown,
+                        value=result.stdout.strip(),
+                    )
+                )
+
+    return None
 
 
 # **********************************************************
@@ -529,6 +570,28 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
 # *****************************************************
 # Internal execution APIs.
 # *****************************************************
+def _executable_path(settings: dict[str, Any]) -> list[str]:
+    """Returns the path to the executable."""
+    if settings["path"]:
+        # 'path' setting takes priority over everything.
+        return settings["path"]
+    elif settings["interpreter"] and not utils.is_current_interpreter(
+        settings["interpreter"][0]
+    ):
+        # If there is a different interpreter set, find its scripts path.
+        if settings["interpreter"][0] not in INTERPRETER_PATHS:
+            INTERPRETER_PATHS[settings["interpreter"][0]] = utils.scripts(
+                settings["interpreter"][0]
+            )
+        return [
+            os.path.join(INTERPRETER_PATHS[settings["interpreter"][0]], TOOL_MODULE)
+        ]
+    else:
+        # If the interpreter is same as the interpreter running this process, get the
+        # scripts path directly.
+        return [os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)]
+
+
 def _run_tool_on_document(
     document: workspace.Document,
     use_stdin: bool = False,
@@ -550,32 +613,7 @@ def _run_tool_on_document(
     # Deep copy, to prevent accidentally updating global settings.
     settings = copy.deepcopy(_get_settings_by_document(document))
 
-    cwd = settings["workspaceFS"]
-
-    if settings["path"]:
-        # 'path' setting takes priority over everything.
-        argv = settings["path"]
-    elif settings["interpreter"] and not utils.is_current_interpreter(
-        settings["interpreter"][0]
-    ):
-        # If there is a different interpreter set, find its scripts path.
-        if settings["interpreter"][0] not in INTERPRETER_PATHS:
-            INTERPRETER_PATHS[settings["interpreter"][0]] = utils.scripts(
-                settings["interpreter"][0]
-            )
-
-        path: str = os.path.join(
-            INTERPRETER_PATHS[settings["interpreter"][0]], TOOL_MODULE
-        )
-        argv = [path]
-    else:
-        # If the interpreter is same as the interpreter running this process, get the
-        # scripts path directly.
-        path = os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)
-        argv = [path]
-
-    argv += TOOL_ARGS + settings["args"] + list(extra_args)
-
+    argv = _executable_path(settings) + TOOL_ARGS + settings["args"] + list(extra_args)
     if use_stdin:
         argv += ["--stdin-filename", document.path]
     else:
@@ -585,8 +623,30 @@ def _run_tool_on_document(
     result: utils.RunResult = utils.run_path(
         argv=argv,
         use_stdin=use_stdin,
-        cwd=cwd,
+        cwd=settings["workspaceFS"],
         source=document.source.replace("\r\n", "\n"),
+    )
+    if result.stderr:
+        log_to_output(result.stderr)
+
+    return result
+
+
+def _run_subcommand_on_document(
+    document: workspace.Document,
+    args: Sequence[str],
+) -> utils.RunResult:
+    """Runs the tool subcommand on the given document."""
+    # Deep copy, to prevent accidentally updating global settings.
+    settings = copy.deepcopy(_get_settings_by_document(document))
+
+    argv = _executable_path(settings) + list(args)
+
+    log_to_output(f"Running Ruff with: {argv}")
+    result: utils.RunResult = utils.run_path(
+        argv=argv,
+        use_stdin=False,
+        cwd=settings["workspaceFS"],
     )
     if result.stderr:
         log_to_output(result.stderr)
