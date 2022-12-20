@@ -14,7 +14,6 @@ from typing import Any, Sequence, cast
 
 from lsprotocol.types import (
     CODE_ACTION_RESOLVE,
-    EXIT,
     INITIALIZE,
     TEXT_DOCUMENT_CODE_ACTION,
     TEXT_DOCUMENT_DID_CHANGE,
@@ -46,15 +45,15 @@ from lsprotocol.types import (
 from pygls import protocol, server, uris, workspace
 from typing_extensions import TypedDict
 
-from ruff_lsp import jsonrpc, utils
+from ruff_lsp import utils
 
 WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
-RUNNER = pathlib.Path(__file__).parent / "runner.py"
+INTERPRETER_PATHS: dict[str, str] = {}
 
 MAX_WORKERS = 5
 LSP_SERVER = server.LanguageServer(
     name="Ruff",
-    version="2022.0.22",
+    version="2022.0.23",
     max_workers=MAX_WORKERS,
 )
 
@@ -474,12 +473,6 @@ def initialize(params: InitializeParams) -> None:
             LSP_SERVER.lsp.trace = TraceValues.Off
 
 
-@LSP_SERVER.feature(EXIT)
-def on_exit():
-    """Handle clean up on exit."""
-    jsonrpc.shutdown_json_rpc()
-
-
 # *****************************************************
 # Internal functional and settings management APIs.
 # *****************************************************
@@ -554,29 +547,44 @@ def _run_tool_on_document(
         log_warning(f"Skipping standard library file: {document.path}")
         return None
 
-    # deep copy here to prevent accidentally updating global settings.
+    # Deep copy, to prevent accidentally updating global settings.
     settings = copy.deepcopy(_get_settings_by_document(document))
 
-    code_workspace = settings["workspaceFS"]
     cwd = settings["workspaceFS"]
 
-    use_path = False
-    use_rpc = False
+    bundled_path = os.fspath(
+        pathlib.Path(__file__).parent.parent / "libs" / "bin" / TOOL_MODULE
+    )
     if settings["path"]:
         # 'path' setting takes priority over everything.
-        use_path = True
         argv = settings["path"]
+    elif settings["importStrategy"] == "useBundled":
+        # If we're loading from the bundle, use the absolute path.
+        argv = [bundled_path]
     elif settings["interpreter"] and not utils.is_current_interpreter(
         settings["interpreter"][0]
     ):
-        # If there is a different interpreter set use JSON-RPC to the subprocess
-        # running under that interpreter.
-        argv = [TOOL_MODULE]
-        use_rpc = True
+        # If there is a different interpreter set, find its scripts path.
+        if settings["interpreter"][0] not in INTERPRETER_PATHS:
+            INTERPRETER_PATHS[settings["interpreter"][0]] = utils.scripts(
+                settings["interpreter"][0]
+            )
+
+        path: str = os.path.join(
+            INTERPRETER_PATHS[settings["interpreter"][0]], TOOL_MODULE
+        )
+        if os.path.isfile(path):
+            argv = [path]
+        else:
+            argv = [bundled_path]
     else:
-        # If the interpreter is same as the interpreter running this process then run
-        # as module.
-        argv = [os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)]
+        # If the interpreter is same as the interpreter running this process, get the
+        # scripts path directly.
+        path = os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)
+        if os.path.isfile(path):
+            argv = [path]
+        else:
+            argv = [bundled_path]
 
     argv += TOOL_ARGS + settings["args"] + list(extra_args)
 
@@ -585,44 +593,15 @@ def _run_tool_on_document(
     else:
         argv += [document.path]
 
-    result: utils.RunResult
-    if use_path:
-        # This mode is used when running executables.
-        result = utils.run_path(
-            argv=argv,
-            use_stdin=use_stdin,
-            cwd=cwd,
-            source=document.source.replace("\r\n", "\n"),
-        )
-        if result.stderr:
-            log_to_output(result.stderr)
-    elif use_rpc:
-        # This mode is used if the interpreter running this server is different from
-        # the interpreter used for running this server.
-        rpc_result = jsonrpc.run_over_json_rpc(
-            workspace=code_workspace,
-            interpreter=settings["interpreter"],
-            module=TOOL_MODULE,
-            argv=argv,
-            use_stdin=use_stdin,
-            cwd=cwd,
-            source=document.source,
-        )
-        if rpc_result.exception:
-            log_error(rpc_result.exception)
-        elif rpc_result.stderr:
-            log_to_output(rpc_result.stderr)
-        result = utils.RunResult(rpc_result.stdout, rpc_result.stderr)
-    else:
-        # This mode is used when running executables.
-        result = utils.run_path(
-            argv=argv,
-            use_stdin=use_stdin,
-            cwd=cwd,
-            source=document.source.replace("\r\n", "\n"),
-        )
-        if result.stderr:
-            log_to_output(result.stderr)
+    log_to_output(f"Running Ruff with: {argv}")
+    result: utils.RunResult = utils.run_path(
+        argv=argv,
+        use_stdin=use_stdin,
+        cwd=cwd,
+        source=document.source.replace("\r\n", "\n"),
+    )
+    if result.stderr:
+        log_to_output(result.stderr)
 
     return result
 
