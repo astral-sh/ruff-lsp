@@ -1,4 +1,4 @@
-format:
+fmt:
 	poetry run ruff --fix ./ruff_lsp
 	poetry run black ./ruff_lsp
 
