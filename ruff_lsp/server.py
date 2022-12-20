@@ -552,15 +552,9 @@ def _run_tool_on_document(
 
     cwd = settings["workspaceFS"]
 
-    bundled_path = os.fspath(
-        pathlib.Path(__file__).parent.parent / "libs" / "bin" / TOOL_MODULE
-    )
     if settings["path"]:
         # 'path' setting takes priority over everything.
         argv = settings["path"]
-    elif settings["importStrategy"] == "useBundled":
-        # If we're loading from the bundle, use the absolute path.
-        argv = [bundled_path]
     elif settings["interpreter"] and not utils.is_current_interpreter(
         settings["interpreter"][0]
     ):
@@ -573,18 +567,12 @@ def _run_tool_on_document(
         path: str = os.path.join(
             INTERPRETER_PATHS[settings["interpreter"][0]], TOOL_MODULE
         )
-        if os.path.isfile(path):
-            argv = [path]
-        else:
-            argv = [bundled_path]
+        argv = [path]
     else:
         # If the interpreter is same as the interpreter running this process, get the
         # scripts path directly.
         path = os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)
-        if os.path.isfile(path):
-            argv = [path]
-        else:
-            argv = [bundled_path]
+        argv = [path]
 
     argv += TOOL_ARGS + settings["args"] + list(extra_args)
 
