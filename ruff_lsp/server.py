@@ -49,7 +49,7 @@ from lsprotocol.types import (
 from pygls import protocol, server, uris, workspace
 from typing_extensions import TypedDict
 
-from ruff_lsp import utils
+from ruff_lsp import __version__, utils
 
 USER_DEFAULTS: dict[str, str] = {}
 WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
@@ -58,7 +58,7 @@ INTERPRETER_PATHS: dict[str, str] = {}
 MAX_WORKERS = 5
 LSP_SERVER = server.LanguageServer(
     name="Ruff",
-    version="0.0.5",
+    version=__version__,
     max_workers=MAX_WORKERS,
 )
 
@@ -513,14 +513,6 @@ def initialize(params: InitializeParams) -> None:
             LSP_SERVER.lsp.trace = TraceValues.Messages
         else:
             LSP_SERVER.lsp.trace = TraceValues.Off
-    LSP_SERVER.lsp.trace = TraceValues.Verbose
-    log_to_output(
-        f"Initializing with:"
-        f"params.initialization_options={params.initialization_options}"
-    )
-    log_to_output(f"Initializing with: user_settings={user_settings}")
-    log_to_output(f"Initializing with: settings={settings}")
-    log_to_output(f"Initializing with: WORKSPACE_SETTINGS={WORKSPACE_SETTINGS}")
 
 
 ###
@@ -670,7 +662,9 @@ def _run_tool_on_document(
     # Deep copy, to prevent accidentally updating global settings.
     settings = copy.deepcopy(_get_settings_by_document(document))
 
-    argv = [settings] + TOOL_ARGS + settings["args"] + list(extra_args)
+    argv: list[str] = (
+        [_executable_path(settings)] + TOOL_ARGS + settings["args"] + list(extra_args)
+    )
     if use_stdin:
         argv += ["--stdin-filename", document.path]
     else:
@@ -697,7 +691,7 @@ def _run_subcommand_on_document(
     # Deep copy, to prevent accidentally updating global settings.
     settings = copy.deepcopy(_get_settings_by_document(document))
 
-    argv = [_executable_path(settings)] + list(args)
+    argv: list[str] = [_executable_path(settings)] + list(args)
 
     log_to_output(f"Running Ruff with: {argv}")
     result: utils.RunResult = utils.run_path(
