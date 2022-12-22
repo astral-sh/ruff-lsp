@@ -1,5 +1,3 @@
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.
 """Utility functions and classes for use with running tools over LSP."""
 
 from __future__ import annotations
@@ -9,12 +7,7 @@ import os.path
 import site
 import subprocess
 import sys
-import threading
 from typing import Any, Sequence
-
-# Save the working directory used when loading this module
-SERVER_CWD = os.getcwd()
-CWD_LOCK = threading.Lock()
 
 
 def as_list(content: Any | list[Any] | tuple[Any, ...]) -> list[Any]:
