@@ -1,6 +1,4 @@
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.
-"""Implementation of tool support over LSP."""
+"""Implementation of the LSP server for Ruff."""
 
 from __future__ import annotations
 
@@ -59,24 +57,18 @@ INTERPRETER_PATHS: dict[str, str] = {}
 MAX_WORKERS = 5
 LSP_SERVER = server.LanguageServer(
     name="Ruff",
-    version="2022.0.23",
+    version="0.0.5",
     max_workers=MAX_WORKERS,
 )
 
-
-# **********************************************************
-# Tool specific code goes below this.
-# **********************************************************
-
 TOOL_MODULE = "ruff"
-
 TOOL_DISPLAY = "Ruff"
-
 TOOL_ARGS = ["--no-cache", "--no-fix", "--quiet", "--format", "json", "-"]
 
-# **********************************************************
-# Linting features start here
-# **********************************************************
+
+###
+# Linting.
+###
 
 
 @LSP_SERVER.feature(TEXT_DOCUMENT_DID_OPEN)
@@ -222,13 +214,9 @@ def hover(params: HoverParams) -> Hover | None:
     return None
 
 
-# **********************************************************
-# Linting features end here
-# **********************************************************
-
-# **********************************************************
-# Code Action features start here
-# **********************************************************
+###
+# Code Actions.
+###
 
 
 class TextDocument(TypedDict):
@@ -489,18 +477,18 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
     return text.replace(actual, expected)
 
 
-# **********************************************************
-# Code Action features ends here
-# **********************************************************
+###
+# Lifecycle.
+###
 
 
-# **********************************************************
-# Required Language Server Initialization and Exit handlers.
-# **********************************************************
 @LSP_SERVER.feature(INITIALIZE)
 def initialize(params: InitializeParams) -> None:
     """LSP handler for initialize request."""
-    settings = params.initialization_options["settings"]  # type: ignore
+    settings = cast(
+        list[dict[str, Any]],
+        params.initialization_options["settings"],  # type: ignore[index]
+    )
     _update_workspace_settings(settings)
 
     if isinstance(LSP_SERVER.lsp, protocol.LanguageServerProtocol):
@@ -514,9 +502,11 @@ def initialize(params: InitializeParams) -> None:
             LSP_SERVER.lsp.trace = TraceValues.Off
 
 
-# *****************************************************
-# Internal functional and settings management APIs.
-# *****************************************************
+###
+# Settings.
+###
+
+
 def _get_default_settings(workspace_path: str) -> dict[str, Any]:
     return {
         "check": False,
@@ -526,11 +516,12 @@ def _get_default_settings(workspace_path: str) -> dict[str, Any]:
         "args": [],
         "path": [],
         "interpreter": [sys.executable],
+        "importStrategy": "fromEnvironment",
         "showNotifications": "off",
     }
 
 
-def _update_workspace_settings(settings) -> None:
+def _update_workspace_settings(settings: list[dict[str, Any]]) -> None:
     if not settings:
         key = os.getcwd()
         WORKSPACE_SETTINGS[key] = _get_default_settings(key)
@@ -567,29 +558,56 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
     return WORKSPACE_SETTINGS[str(key)]
 
 
-# *****************************************************
+###
 # Internal execution APIs.
-# *****************************************************
+###
+
+
 def _executable_path(settings: dict[str, Any]) -> list[str]:
     """Returns the path to the executable."""
+    bundle = get_bundle()
     if settings["path"]:
         # 'path' setting takes priority over everything.
+        log_to_output(f"Using 'path' setting: {settings['path']}")
         return settings["path"]
+    elif settings["importStrategy"] == "useBundled" and bundle:
+        # If we're loading from the bundle, use the absolute path.
+        log_to_output(f"Using bundled executable: {bundle}")
+        return [bundle]
     elif settings["interpreter"] and not utils.is_current_interpreter(
         settings["interpreter"][0]
     ):
-        # If there is a different interpreter set, find its scripts path.
+        # If there is a different interpreter set, find its script path.
         if settings["interpreter"][0] not in INTERPRETER_PATHS:
             INTERPRETER_PATHS[settings["interpreter"][0]] = utils.scripts(
                 settings["interpreter"][0]
             )
-        return [
-            os.path.join(INTERPRETER_PATHS[settings["interpreter"][0]], TOOL_MODULE)
-        ]
+
+        path: str = os.path.join(
+            INTERPRETER_PATHS[settings["interpreter"][0]], TOOL_MODULE
+        )
+        if bundle and not os.path.exists(path):
+            log_to_output(
+                f"External interpreter executable ({path}) not found; "
+                f"falling back to bundled executable: {bundle}"
+            )
+            path = bundle
+        else:
+            log_to_output(f"Using external interpreter executable: {path}")
+        return [path]
     else:
         # If the interpreter is same as the interpreter running this process, get the
-        # scripts path directly.
-        return [os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)]
+        # script path directly.
+        path = os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)
+        if bundle and not os.path.exists(path):
+            log_to_output(
+                f"Interpreter executable ({path}) not found; "
+                f"falling back to bundled executable: {bundle}"
+            )
+            path = bundle
+        else:
+            log_to_output(f"Using interpreter executable: {path}")
+        return [path]
 
 
 def _run_tool_on_document(
@@ -654,9 +672,11 @@ def _run_subcommand_on_document(
     return result
 
 
-# *****************************************************
-# Logging and notification.
-# *****************************************************
+###
+# Logging.
+###
+
+
 def log_to_output(message: str, msg_type: MessageType = MessageType.Log) -> None:
     LSP_SERVER.show_message_log(message, msg_type)
 
@@ -683,8 +703,32 @@ def log_always(message: str) -> None:
         LSP_SERVER.show_message(message, MessageType.Info)
 
 
-# *****************************************************
-# Start the server.
-# *****************************************************
-if __name__ == "__main__":
+###
+# Bundled mode.
+###
+
+_BUNDLED_PATH: str | None = None
+
+
+def set_bundle(path: str) -> None:
+    """Sets the path to the bundled Ruff executable."""
+    global _BUNDLED_PATH
+    _BUNDLED_PATH = path
+
+
+def get_bundle() -> str | None:
+    """Returns the path to the bundled Ruff executable."""
+    return _BUNDLED_PATH
+
+
+###
+# Start up.
+###
+
+
+def start() -> None:
     LSP_SERVER.start_io()
+
+
+if __name__ == "__main__":
+    start()
