@@ -51,6 +51,7 @@ from typing_extensions import TypedDict
 
 from ruff_lsp import utils
 
+USER_DEFAULTS: dict[str, str] = {}
 WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
 INTERPRETER_PATHS: dict[str, str] = {}
 
@@ -485,10 +486,22 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
 @LSP_SERVER.feature(INITIALIZE)
 def initialize(params: InitializeParams) -> None:
     """LSP handler for initialize request."""
-    settings = cast(
-        list[dict[str, Any]],
-        params.initialization_options["settings"],  # type: ignore[index]
+    # Extract `settings` from the initialization options.
+    user_settings = params.initialization_options.get(  # type: ignore[attr-defined]
+        "settings",
     )
+    if isinstance(user_settings, dict):
+        # In Sublime Text, Neovim, and probably others, we're passed a single
+        # `settings`, which we'll treat as defaults for any future files.
+        USER_DEFAULTS.update(user_settings)
+        settings = [user_settings]
+    elif isinstance(user_settings, list):
+        # In VS Code, we're passed a list of `settings`, one for each workspace folder.
+        # It doesn't really make sense to save these defaults.
+        settings = user_settings
+    else:
+        settings = []
+
     _update_workspace_settings(settings)
 
     if isinstance(LSP_SERVER.lsp, protocol.LanguageServerProtocol):
@@ -500,6 +513,14 @@ def initialize(params: InitializeParams) -> None:
             LSP_SERVER.lsp.trace = TraceValues.Messages
         else:
             LSP_SERVER.lsp.trace = TraceValues.Off
+    LSP_SERVER.lsp.trace = TraceValues.Verbose
+    log_to_output(
+        f"Initializing with:"
+        f"params.initialization_options={params.initialization_options}"
+    )
+    log_to_output(f"Initializing with: user_settings={user_settings}")
+    log_to_output(f"Initializing with: settings={settings}")
+    log_to_output(f"Initializing with: WORKSPACE_SETTINGS={WORKSPACE_SETTINGS}")
 
 
 ###
@@ -507,32 +528,44 @@ def initialize(params: InitializeParams) -> None:
 ###
 
 
-def _get_default_settings(workspace_path: str) -> dict[str, Any]:
+def _default_settings() -> dict[str, Any]:
     return {
-        "check": False,
-        "workspaceFS": workspace_path,
-        "workspace": uris.from_fs_path(workspace_path),
-        "logLevel": "error",
-        "args": [],
-        "path": [],
-        "interpreter": [sys.executable],
-        "importStrategy": "fromEnvironment",
-        "showNotifications": "off",
+        "logLevel": USER_DEFAULTS.get("logLevel", "error"),
+        "args": USER_DEFAULTS.get("args", []),
+        "path": USER_DEFAULTS.get("path", []),
+        "interpreter": USER_DEFAULTS.get("interpreter", [sys.executable]),
+        "importStrategy": USER_DEFAULTS.get("importStrategy", "fromEnvironment"),
+        "showNotifications": USER_DEFAULTS.get("showNotifications", "off"),
     }
 
 
 def _update_workspace_settings(settings: list[dict[str, Any]]) -> None:
     if not settings:
-        key = os.getcwd()
-        WORKSPACE_SETTINGS[key] = _get_default_settings(key)
+        workspace_path = os.getcwd()
+        WORKSPACE_SETTINGS[workspace_path] = {
+            **_default_settings(),
+            "workspaceFS": workspace_path,
+            "workspace": uris.from_fs_path(workspace_path),
+        }
         return
 
     for setting in settings:
-        key = uris.to_fs_path(setting["workspace"])
-        WORKSPACE_SETTINGS[key] = {
-            **setting,
-            "workspaceFS": key,
-        }
+        if "workspace" in setting:
+            workspace_path = uris.to_fs_path(setting["workspace"])
+            WORKSPACE_SETTINGS[workspace_path] = {
+                **_default_settings(),
+                **setting,
+                "workspaceFS": workspace_path,
+                "workspace": setting["workspace"],
+            }
+        else:
+            workspace_path = os.getcwd()
+            WORKSPACE_SETTINGS[workspace_path] = {
+                **_default_settings(),
+                **setting,
+                "workspaceFS": workspace_path,
+                "workspace": uris.from_fs_path(workspace_path),
+            }
 
 
 def _get_document_key(document: workspace.Document) -> str | None:
@@ -552,8 +585,12 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
 
     key = _get_document_key(document)
     if key is None:
-        key = os.fspath(pathlib.Path(document.path).parent)
-        return _get_default_settings(key)
+        workspace_path = os.fspath(pathlib.Path(document.path).parent)
+        return {
+            **_default_settings(),
+            "workspaceFS": workspace_path,
+            "workspace": uris.from_fs_path(workspace_path),
+        }
 
     return WORKSPACE_SETTINGS[str(key)]
 
@@ -563,18 +600,22 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
 ###
 
 
-def _executable_path(settings: dict[str, Any]) -> list[str]:
+def _executable_path(settings: dict[str, Any]) -> str:
     """Returns the path to the executable."""
     bundle = get_bundle()
     if settings["path"]:
         # 'path' setting takes priority over everything.
         log_to_output(f"Using 'path' setting: {settings['path']}")
-        return settings["path"]
-    elif settings["importStrategy"] == "useBundled" and bundle:
+        for path in settings["path"]:
+            if os.path.exists(path):
+                return path
+
+    if settings["importStrategy"] == "useBundled" and bundle:
         # If we're loading from the bundle, use the absolute path.
         log_to_output(f"Using bundled executable: {bundle}")
-        return [bundle]
-    elif settings["interpreter"] and not utils.is_current_interpreter(
+        return bundle
+
+    if settings["interpreter"] and not utils.is_current_interpreter(
         settings["interpreter"][0]
     ):
         # If there is a different interpreter set, find its script path.
@@ -583,9 +624,7 @@ def _executable_path(settings: dict[str, Any]) -> list[str]:
                 settings["interpreter"][0]
             )
 
-        path: str = os.path.join(
-            INTERPRETER_PATHS[settings["interpreter"][0]], TOOL_MODULE
-        )
+        path = os.path.join(INTERPRETER_PATHS[settings["interpreter"][0]], TOOL_MODULE)
         if bundle and not os.path.exists(path):
             log_to_output(
                 f"External interpreter executable ({path}) not found; "
@@ -594,20 +633,20 @@ def _executable_path(settings: dict[str, Any]) -> list[str]:
             path = bundle
         else:
             log_to_output(f"Using external interpreter executable: {path}")
-        return [path]
+        return path
+
+    # If the interpreter is same as the interpreter running this process, get the
+    # script path directly.
+    path = os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)
+    if bundle and not os.path.exists(path):
+        log_to_output(
+            f"Interpreter executable ({path}) not found; "
+            f"falling back to bundled executable: {bundle}"
+        )
+        path = bundle
     else:
-        # If the interpreter is same as the interpreter running this process, get the
-        # script path directly.
-        path = os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)
-        if bundle and not os.path.exists(path):
-            log_to_output(
-                f"Interpreter executable ({path}) not found; "
-                f"falling back to bundled executable: {bundle}"
-            )
-            path = bundle
-        else:
-            log_to_output(f"Using interpreter executable: {path}")
-        return [path]
+        log_to_output(f"Using interpreter executable: {path}")
+    return path
 
 
 def _run_tool_on_document(
@@ -631,7 +670,7 @@ def _run_tool_on_document(
     # Deep copy, to prevent accidentally updating global settings.
     settings = copy.deepcopy(_get_settings_by_document(document))
 
-    argv = _executable_path(settings) + TOOL_ARGS + settings["args"] + list(extra_args)
+    argv = [settings] + TOOL_ARGS + settings["args"] + list(extra_args)
     if use_stdin:
         argv += ["--stdin-filename", document.path]
     else:
@@ -658,7 +697,7 @@ def _run_subcommand_on_document(
     # Deep copy, to prevent accidentally updating global settings.
     settings = copy.deepcopy(_get_settings_by_document(document))
 
-    argv = _executable_path(settings) + list(args)
+    argv = [_executable_path(settings)] + list(args)
 
     log_to_output(f"Running Ruff with: {argv}")
     result: utils.RunResult = utils.run_path(
