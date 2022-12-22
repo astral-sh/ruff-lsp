@@ -79,18 +79,20 @@ local configs = require 'lspconfig.configs'
 if not configs.ruff_lsp then
   configs.ruff_lsp = {
     default_config = {
-    cmd = { "ruff-lsp" },
-    filetypes = {'python'},
-    root_dir = require('lspconfig').util.find_git_ancestor,
-    settings = {
-      ruff_lsp = {
-        -- Any extra CLI arguments for `ruff` go here.
-        args = {}
-      }
+      cmd = { 'ruff-lsp' },
+      filetypes = { 'python' },
+      root_dir = require('lspconfig').util.find_git_ancestor,
+      init_options = {
+        settings = {
+          args = {}
+        }
+      } 
     }
   }
-}
 end
+require('lspconfig').ruff_lsp.setup {
+  on_attach = on_attach,
+}
 
 require('lspconfig').ruff_lsp.setup {
   on_attach = on_attach,
@@ -109,10 +111,15 @@ package, then add something like the following to `LSP.sublime-settings`:
 ```json
 {
   "clients": {
-    "python-lsp-server": {
+    "ruff-lsp": {
       "command": ["ruff-lsp"],
       "enabled": true,
-      "selector": "source.python"
+      "selector": "source.python",
+      "initializationOptions": {
+        "settings": {
+          "args": []
+        }
+      }
     }
   }
 }
@@ -127,13 +134,13 @@ Upon successful installation, you should see errors surfaced directly in your ed
 The exact mechanism by which settings will be passed to `ruff-lsp` will vary by editor. However,
 the following settings are supported:
 
-| Settings         | Default | Description                                                                            |
-|------------------|---------|----------------------------------------------------------------------------------------|
-| args             | `[]`    | Custom arguments passed to `ruff`. E.g `"args": ["--config=/path/to/pyproject.toml"]`. |
-| logLevel         | `error` | Sets the tracing level for the extension.                                              |
-| path             | `[]`    | Setting to provide custom `ruff` executable. E.g. `["~/global_env/ruff"]`.             |
-| interpreter      | `[]`    | Path to a Python interpreter to use to run the linter server.                          |
-| showNotification | `off`   | Setting to control when a notification is shown.                                       |
+| Settings         | Default | Description                                                                              |
+|------------------|---------|------------------------------------------------------------------------------------------|
+| args             | `[]`    | Custom arguments passed to `ruff`. E.g `"args": ["--config=/path/to/pyproject.toml"]`.   |
+| logLevel         | `error` | Sets the tracing level for the extension.                                                |
+| path             | `[]`    | Setting to provide custom `ruff` executables, to try in order. E.g. `["/path/to/ruff"]`. |
+| interpreter      | `[]`    | Path to a Python interpreter to use to run the linter server.                            |
+| showNotification | `off`   | Setting to control when a notification is shown.                                         |
 
 ## Development
 
