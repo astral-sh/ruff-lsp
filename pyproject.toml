@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "ruff-lsp"
-version = "0.0.7"
+version = "0.0.8"
 description = "A Language Server Protocol implementation for Ruff."
 authors = ["Charlie Marsh <charlie.r.marsh@gmail.com>"]
 maintainers = ["Charlie Marsh <charlie.r.marsh@gmail.com>"]
