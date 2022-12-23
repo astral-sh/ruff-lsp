@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.7", "3.8", "3.9", "3.10" ]
+        python-version: [ "3.7", "3.8", "3.9", "3.10", "3.11" ]
         poetry-version: [ "1.1.15" ]
         os: [ ubuntu-18.04, macos-latest, windows-latest ]
     runs-on: ${{ matrix.os }}
@@ -27,8 +27,10 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: Run Ruff
-        run: poetry run ruff ./ruff_lsp
+        run: poetry run ruff ./ruff_lsp ./tests
       - name: Run Black
-        run: poetry run black --check ./ruff_lsp
+        run: poetry run black --check ./ruff_lsp ./tests
       - name: Run Mypy
-        run: poetry run mypy ./ruff_lsp
+        run: poetry run mypy ./ruff_lsp ./tests
+      - name: Run unittest
+        run: poetry run python -m unittest

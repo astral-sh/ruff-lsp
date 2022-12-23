@@ -1,5 +1,6 @@
 """Implementation of the LSP server for Ruff."""
 
+
 from __future__ import annotations
 
 import copy
