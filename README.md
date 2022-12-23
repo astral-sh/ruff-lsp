@@ -123,7 +123,24 @@ package, then add something like the following to `LSP.sublime-settings`:
 
 Upon successful installation, you should see errors surfaced directly in your editor:
 
-![](https://user-images.githubusercontent.com/1309177/208266375-331ad8e5-8ac1-4735-bca8-07734eb38536.png)
+![Code Actions available in Sublime Text](https://user-images.githubusercontent.com/1309177/208266375-331ad8e5-8ac1-4735-bca8-07734eb38536.png)
+
+### Example: Helix
+
+To use `ruff-lsp` with [Helix](https://helix-editor.com/), add something like the following to
+`~/.config/helix/languages.toml`:
+
+```toml
+[[language]]
+name = "python"
+scope = "source.python"
+language-server = { command = "ruff-lsp" }
+config = { settings = { args = [] } }
+```
+
+Upon successful installation, you should see errors surfaced directly in your editor:
+
+![](https://user-images.githubusercontent.com/1309177/209262106-71e34f8d-73cc-4889-89f7-3f54a4481c52.png)
 
 ## Settings
 
