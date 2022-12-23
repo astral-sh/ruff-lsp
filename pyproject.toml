@@ -42,7 +42,7 @@ typing_extensions = "*"
 [tool.poetry.dev-dependencies]
 black = "==22.12.0"
 mypy = "==0.991"
-python-jsonrpc-server = "^0.4.0"
+python-jsonrpc-server = "==0.4.0"
 
 [tool.ruff]
 line-length = 88
