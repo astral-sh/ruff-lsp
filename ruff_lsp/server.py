@@ -251,90 +251,100 @@ class Fix(TypedDict):
 )
 def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     """LSP handler for textDocument/codeAction request."""
-    text_document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
 
-    if utils.is_stdlib_file(text_document.path):
+    # Deep copy, to prevent accidentally updating global settings.
+    settings = copy.deepcopy(_get_settings_by_document(document))
+
+    if utils.is_stdlib_file(document.path):
         # Don't format standard library files.
         # Publishing empty diagnostics clears the entry.
         return None
 
-    # Generate the "Ruff: Organize Imports" edit
-    for kind in (
-        CodeActionKind.SourceOrganizeImports,
-        f"{CodeActionKind.SourceOrganizeImports}.ruff",
-    ):
-        if (
-            params.context.only
-            and len(params.context.only) == 1
-            and kind in params.context.only
+    if settings["organizeImports"]:
+        # Generate the "Ruff: Organize Imports" edit
+        for kind in (
+            CodeActionKind.SourceOrganizeImports,
+            f"{CodeActionKind.SourceOrganizeImports}.ruff",
         ):
-            results = _formatting_helper(text_document, select="I001")
-            if results is not None:
+            if (
+                params.context.only
+                and len(params.context.only) == 1
+                and kind in params.context.only
+            ):
+                results = _formatting_helper(document, select="I001")
+                if results is not None:
+                    return [
+                        CodeAction(
+                            title="Ruff: Organize Imports",
+                            kind=kind,
+                            data=params.text_document.uri,
+                            edit=_create_workspace_edits(document, results),
+                            diagnostics=[],
+                        )
+                    ]
+                else:
+                    return []
+
+    if settings["fixAll"]:
+        # Generate the "Ruff: Fix All" edit.
+        for kind in (
+            CodeActionKind.SourceFixAll,
+            f"{CodeActionKind.SourceFixAll}.ruff",
+        ):
+            if (
+                params.context.only
+                and len(params.context.only) == 1
+                and kind in params.context.only
+            ):
                 return [
                     CodeAction(
-                        title="Ruff: Organize Imports",
+                        title="Ruff: Fix All",
                         kind=kind,
                         data=params.text_document.uri,
-                        edit=_create_workspace_edits(text_document, results),
-                        diagnostics=[],
-                    )
-                ]
-            else:
-                return []
-
-    # Generate the "Ruff: Fix All" edit.
-    for kind in (
-        CodeActionKind.SourceFixAll,
-        f"{CodeActionKind.SourceFixAll}.ruff",
-    ):
-        if (
-            params.context.only
-            and len(params.context.only) == 1
-            and kind in params.context.only
-        ):
-            return [
-                CodeAction(
-                    title="Ruff: Fix All",
-                    kind=kind,
-                    data=params.text_document.uri,
-                    edit=_create_workspace_edits(
-                        text_document, _formatting_helper(text_document) or []
+                        edit=_create_workspace_edits(
+                            document, _formatting_helper(document) or []
+                        ),
+                        diagnostics=[
+                            diagnostic
+                            for diagnostic in params.context.diagnostics
+                            if diagnostic.source == "Ruff"
+                            and diagnostic.data is not None
+                        ],
                     ),
-                    diagnostics=[
-                        diagnostic
-                        for diagnostic in params.context.diagnostics
-                        if diagnostic.source == "Ruff" and diagnostic.data is not None
-                    ],
-                ),
-            ]
+                ]
 
     actions: list[CodeAction] = []
 
-    # Add "Ruff: Organize Imports" as a supported action.
-    if not params.context.only or (
-        CodeActionKind.SourceOrganizeImports in params.context.only
-    ):
-        actions.append(
-            CodeAction(
-                title="Ruff: Organize Imports",
-                kind=CodeActionKind.SourceOrganizeImports,
-                data=params.text_document.uri,
-                edit=None,
-                diagnostics=[],
-            ),
-        )
+    if settings["organizeImports"]:
+        # Add "Ruff: Organize Imports" as a supported action.
+        if not params.context.only or (
+            CodeActionKind.SourceOrganizeImports in params.context.only
+        ):
+            actions.append(
+                CodeAction(
+                    title="Ruff: Organize Imports",
+                    kind=CodeActionKind.SourceOrganizeImports,
+                    data=params.text_document.uri,
+                    edit=None,
+                    diagnostics=[],
+                ),
+            )
 
-    # Add "Ruff: Fix All" as a supported action.
-    if not params.context.only or (CodeActionKind.SourceFixAll in params.context.only):
-        actions.append(
-            CodeAction(
-                title="Ruff: Fix All",
-                kind=f"{CodeActionKind.SourceFixAll}.ruff",
-                data=params.text_document.uri,
-                edit=None,
-                diagnostics=[],
-            ),
-        )
+    if settings["fixAll"]:
+        # Add "Ruff: Fix All" as a supported action.
+        if not params.context.only or (
+            CodeActionKind.SourceFixAll in params.context.only
+        ):
+            actions.append(
+                CodeAction(
+                    title="Ruff: Fix All",
+                    kind=f"{CodeActionKind.SourceFixAll}.ruff",
+                    data=params.text_document.uri,
+                    edit=None,
+                    diagnostics=[],
+                ),
+            )
 
     # Add "Ruff: Autofix" for every fixable diagnostic.
     if not params.context.only or CodeActionKind.QuickFix in params.context.only:
@@ -351,7 +361,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                             kind=CodeActionKind.QuickFix,
                             data=params.text_document.uri,
                             edit=_create_workspace_edit(
-                                text_document, cast(Fix, diagnostic.data)
+                                document, cast(Fix, diagnostic.data)
                             ),
                             diagnostics=[diagnostic],
                         ),
@@ -363,23 +373,26 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
 @LSP_SERVER.feature(CODE_ACTION_RESOLVE)
 def resolve_code_action(params: CodeAction) -> CodeAction:
     """LSP handler for codeAction/resolve request."""
-    text_document = LSP_SERVER.workspace.get_document(cast(str, params.data))
+    document = LSP_SERVER.workspace.get_document(cast(str, params.data))
 
-    if params.kind in (
+    # Deep copy, to prevent accidentally updating global settings.
+    settings = copy.deepcopy(_get_settings_by_document(document))
+
+    if settings["organizeImports"] and params.kind in (
         CodeActionKind.SourceOrganizeImports,
         f"{CodeActionKind.SourceOrganizeImports}.ruff",
     ):
         # Generate the "Ruff: Organize Imports" edit
         params.edit = _create_workspace_edits(
-            text_document, _formatting_helper(text_document, select="I001") or []
+            document, _formatting_helper(document, select="I001") or []
         )
-    elif params.kind in (
+    elif settings["fixAll"] and params.kind in (
         CodeActionKind.SourceFixAll,
         f"{CodeActionKind.SourceFixAll}.ruff",
     ):
         # Generate the "Ruff: Fix All" edit.
         params.edit = _create_workspace_edits(
-            text_document, _formatting_helper(text_document) or []
+            document, _formatting_helper(document) or []
         )
 
     return params
@@ -543,6 +556,8 @@ def _default_settings() -> dict[str, Any]:
         "interpreter": USER_DEFAULTS.get("interpreter", [sys.executable]),
         "importStrategy": USER_DEFAULTS.get("importStrategy", "fromEnvironment"),
         "showNotifications": USER_DEFAULTS.get("showNotifications", "off"),
+        "organizeImports": USER_DEFAULTS.get("organizeImports", True),
+        "fixAll": USER_DEFAULTS.get("fixAll", True),
     }
 
 
