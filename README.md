@@ -101,7 +101,7 @@ Upon successful installation, you should see Ruff's diagnostics surfaced directl
 
 Ruff also integrates with [`coc.nvim`](https://github.com/neoclide/coc.nvim/wiki/Language-servers#using-ruff-lsp):
 
-```js
+```json
 "languageserver": {
   "ruff-lsp": {
     "command": "ruff-lsp",
