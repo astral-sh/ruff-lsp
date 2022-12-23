@@ -99,6 +99,17 @@ Upon successful installation, you should see Ruff's diagnostics surfaced directl
 
 ![Code Actions available in Neovim](https://user-images.githubusercontent.com/1309177/208278707-25fa37e4-079d-4597-ad35-b95dba066960.png)
 
+Ruff also integrates with [`coc.nvim`](https://github.com/neoclide/coc.nvim/wiki/Language-servers#using-ruff-lsp):
+
+```js
+"languageserver": {
+  "ruff-lsp": {
+    "command": "ruff-lsp",
+    "filetypes": ["python"]
+  }
+}
+```
+
 ### Example: Sublime Text
 
 To use `ruff-lsp` with Sublime Text, install Sublime Text's [LSP](https://github.com/sublimelsp/LSP)
