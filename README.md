@@ -93,10 +93,6 @@ end
 require('lspconfig').ruff_lsp.setup {
   on_attach = on_attach,
 }
-
-require('lspconfig').ruff_lsp.setup {
-  on_attach = on_attach,
-}
 ```
 
 Upon successful installation, you should see Ruff's diagnostics surfaced directly in your editor:
