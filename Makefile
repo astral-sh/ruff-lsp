@@ -7,4 +7,4 @@ check:
 	poetry run black --check ./ruff_lsp
 	poetry run mypy ./ruff_lsp
 
-.PHONY: fmt typecheck lint test
+.PHONY: fmt check
