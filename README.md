@@ -165,6 +165,8 @@ the following settings are supported:
 | path             | `[]`    | Setting to provide custom `ruff` executables, to try in order. E.g. `["/path/to/ruff"]`. |
 | interpreter      | `[]`    | Path to a Python interpreter to use to run the linter server.                            |
 | showNotification | `off`   | Setting to control when a notification is shown.                                         |
+| organizeImports  | `true`  | Whether to register Ruff as capable of handling `source.organizeImports` actions.        |
+| fixAll           | `true`  | Whether to register Ruff as capable of handling `source.fixAll` actions.                 |
 
 ## Development
 
