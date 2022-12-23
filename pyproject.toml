@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -41,6 +42,7 @@ typing_extensions = "*"
 [tool.poetry.dev-dependencies]
 black = "==22.12.0"
 mypy = "==0.991"
+python-jsonrpc-server = "^0.4.0"
 
 [tool.ruff]
 line-length = 88
@@ -54,12 +56,15 @@ select = [
     "N",
 ]
 target-version = "py37"
+extend-exclude = ["tests/data"]
 
 [tool.black]
 line-length = 88
+extend-exclude = "tests/data"
 
 [tool.mypy]
-files = "ruff_lsp"
+files = ["ruff_lsp", "tests"]
+exclude = "tests/data"
 no_implicit_optional = true
 check_untyped_defs = true
 
@@ -68,5 +73,6 @@ module = [
     "debugpy.*",
     "lsprotocol.*",
     "pygls.*",
+    "pyls_jsonrpc.*",
 ]
 ignore_missing_imports = true
