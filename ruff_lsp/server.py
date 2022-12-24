@@ -195,11 +195,11 @@ def hover(params: HoverParams) -> Hover | None:
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
     line = document.lines[params.position.line]
 
-    comment_start = 0
+    comment_start_col = 0
     try:
         for tok in tokenize.tokenize(BytesIO(line.encode()).readline):
             if tok.type == tokenize.COMMENT:
-                comment_start = tok.start[1]
+                comment_start_col = tok.start[1]
                 break
         else:
             # This line doesn't contain a comment
@@ -208,7 +208,7 @@ def hover(params: HoverParams) -> Hover | None:
         # We're unsure if this line contains a comment
         pass
 
-    match = NOQA_REGEX.search(line[comment_start:])
+    match = NOQA_REGEX.search(line[comment_start_col:])
     if not match:
         return None
     codes = match.group("codes")
@@ -218,8 +218,8 @@ def hover(params: HoverParams) -> Hover | None:
     codes_start = match.start("codes")
     for match in CODE_REGEX.finditer(codes):
         start, end = match.span()
-        start += codes_start + comment_start
-        end += codes_start + comment_start
+        start += codes_start + comment_start_col
+        end += codes_start + comment_start_col
         if start <= params.position.character < end:
             code = match.group()
             result = _run_subcommand_on_document(document, ["--explain", code])
