@@ -1,16 +1,19 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry]
+[project]
 name = "ruff-lsp"
-version = "0.0.9"
+dynamic = ["version"]
 description = "A Language Server Protocol implementation for Ruff."
-authors = ["Charlie Marsh <charlie.r.marsh@gmail.com>"]
-maintainers = ["Charlie Marsh <charlie.r.marsh@gmail.com>"]
+authors = [
+    { name = "Charlie Marsh", email = "charlie.r.marsh@gmail.com" },
+]
+maintainers = [
+    { name = "Charlie Marsh", email = "charlie.r.marsh@gmail.com" },
+]
+requires-python = ">=3.7"
 license = "MIT"
-readme = "README.md"
-repository = "https://github.com/charliermarsh/ruff-lsp"
 keywords = ["ruff", "lsp", "language-server", "language-server-protocol", "python"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -29,20 +32,25 @@ classifiers = [
     "Topic :: Software Development :: Testing",
     "Topic :: Utilities",
 ]
+urls = { repository = "https://github.com/charliermarsh/ruff-lsp" }
+dependencies = [
+    "pygls>=1.0.0a3",
+    "ruff>=0.0.150",
+    "typing_extensions",
+]
 
-[tool.poetry.scripts]
+[project.optional-dependencies]
+dev = [
+    "black==22.12.0",
+    "mypy==0.991",
+    "python-lsp-jsonrpc==1.0.0",
+]
+
+[project.scripts]
 ruff-lsp = "ruff_lsp.__main__:main"
 
-[tool.poetry.dependencies]
-python = ">=3.7,<3.12"
-pygls = ">1.0.0a3"
-ruff = ">0.0.150"
-typing_extensions = "*"
-
-[tool.poetry.dev-dependencies]
-black = "==22.12.0"
-mypy = "==0.991"
-python-lsp-jsonrpc = "==1.0.0"
+[tool.hatch.version]
+path = "ruff_lsp/__init__.py"
 
 [tool.ruff]
 line-length = 88

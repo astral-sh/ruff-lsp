@@ -6,27 +6,23 @@ on:
 
 env:
   PYTHON_VERSION: "3.7"
-  POETRY_VERSION: "1.3.1"
 
 jobs:
   release:
-    runs-on: "ubuntu-18.04"
+    runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2
-        with:
-          poetry-version: ${{ env.POETRY_VERSION }}
+      - name: Install Hatch
+        run: python3 -m pip install hatch
       - name: Install dependencies
-        run: poetry build
+        run: hatch build
       - name: Publish to PyPi
         if: "startsWith(github.ref, 'refs/tags/')"
         env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.RUFF_LSP_TOKEN }}
+          HATCH_INDEX_USER: __token__
+          HATCH_INDEX_AUTH: ${{ secrets.RUFF_LSP_TOKEN }}
         run: |
-          pip install --upgrade twine
-          twine upload --skip-existing dist/*
+          hatch publish

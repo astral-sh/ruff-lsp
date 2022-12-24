@@ -1,9 +1,9 @@
 import argparse
 
-from ruff_lsp import __version__
-
 
 def main() -> None:
+    from ruff_lsp import __version__, server
+
     parser = argparse.ArgumentParser(prog="ruff-lsp")
     parser.add_argument(
         "--version",
@@ -11,8 +11,6 @@ def main() -> None:
         version=f"%(prog)s {__version__}",
     )
     parser.parse_args()
-
-    from ruff_lsp import server
 
     server.start()
 

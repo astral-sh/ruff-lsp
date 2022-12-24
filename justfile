@@ -1,19 +1,21 @@
 default: fmt check
 
 lock:
-  poetry lock
+  pip-compile --resolver=backtracking --upgrade -o requirements.txt pyproject.toml
+  pip-compile --resolver=backtracking --upgrade --extra dev -o requirements-dev.txt pyproject.toml
 
 install:
-  poetry install
+  pip install -r requirements.txt
+  pip install -r requirements-dev.txt
 
 fmt:
-  poetry run ruff --fix ./ruff_lsp ./tests
-  poetry run black ./ruff_lsp ./tests
+  ruff --fix ./ruff_lsp ./tests
+  black ./ruff_lsp ./tests
 
 check:
-  poetry run ruff ./ruff_lsp ./tests
-  poetry run black --check ./ruff_lsp ./tests
-  poetry run mypy ./ruff_lsp ./tests
+  ruff ./ruff_lsp ./tests
+  black --check ./ruff_lsp ./tests
+  mypy ./ruff_lsp ./tests
 
 test:
-  poetry run python -m unittest
+  python -m unittest
