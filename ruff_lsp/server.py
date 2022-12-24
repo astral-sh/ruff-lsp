@@ -516,7 +516,7 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
 def initialize(params: InitializeParams) -> None:
     """LSP handler for initialize request."""
     # Extract `settings` from the initialization options.
-    user_settings = params.initialization_options.get(  # type: ignore[attr-defined]
+    user_settings = (params.initialization_options or {}).get(  # type: ignore
         "settings",
     )
     if isinstance(user_settings, dict):
