@@ -153,6 +153,15 @@ Upon successful installation, you should see errors surfaced directly in your ed
 
 ![](https://user-images.githubusercontent.com/1309177/209262106-71e34f8d-73cc-4889-89f7-3f54a4481c52.png)
 
+### Example: Lapce
+
+To use `ruff-lsp` with [Lapce](https://lapce.dev/), install the [`lapce-ruff-lsp`](https://plugins.lapce.dev/plugins/abreumatheus/lapce-ruff-lsp)
+plugin (which wraps `ruff-lsp`) from the Lapce plugins panel.
+
+Upon successful installation, you should see errors surfaced directly in your editor:
+
+![](https://user-images.githubusercontent.com/1309177/209418462-ae106d1f-dbc3-4d53-bae2-66bfccc3e841.png)
+
 ## Settings
 
 The exact mechanism by which settings will be passed to `ruff-lsp` will vary by editor. However,
