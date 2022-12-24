@@ -268,22 +268,22 @@ test = ["mock (==4.0.3)", "pytest (==7.1.2)", "pytest-asyncio (==0.18.3)"]
 ws = ["websockets (>=10.0.0,<11.0.0)"]
 
 [[package]]
-name = "python-jsonrpc-server"
-version = "0.4.0"
+name = "python-lsp-jsonrpc"
+version = "1.0.0"
 description = "JSON RPC 2.0 server library"
 category = "dev"
 optional = false
 python-versions = "*"
 files = [
-    {file = "python-jsonrpc-server-0.4.0.tar.gz", hash = "sha256:62c543e541f101ec5b57dc654efc212d2c2e3ea47ff6f54b2e7dcb36ecf20595"},
-    {file = "python_jsonrpc_server-0.4.0-py3-none-any.whl", hash = "sha256:e5a908ff182e620aac07db5f57887eeb0afe33993008f57dc1b85b594cea250c"},
+    {file = "python-lsp-jsonrpc-1.0.0.tar.gz", hash = "sha256:7bec170733db628d3506ea3a5288ff76aa33c70215ed223abdb0d95e957660bd"},
+    {file = "python_lsp_jsonrpc-1.0.0-py3-none-any.whl", hash = "sha256:079b143be64b0a378bdb21dff5e28a8c1393fe7e8a654ef068322d754e545fc7"},
 ]
 
 [package.dependencies]
 ujson = ">=3.0.0"
 
 [package.extras]
-test = ["coverage", "mock", "pycodestyle", "pyflakes", "pylint", "pytest", "pytest-cov", "versioneer"]
+test = ["coverage", "pycodestyle", "pyflakes", "pylint", "pytest", "pytest-cov"]
 
 [[package]]
 name = "ruff"
@@ -479,4 +479,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7,<3.12"
-content-hash = "f590bec7313dc1f222f84b16d85985c441a1f09ddfdfae518fed3ab2dc3f87bc"
+content-hash = "defabca8ba436c76b0409e03656d97b14ac0ebdbabde7713873c63d220d45e51"
