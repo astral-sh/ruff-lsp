@@ -16,6 +16,9 @@ jobs:
         os: [ ubuntu-18.04, macos-latest, windows-latest ]
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: extractions/setup-just@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
@@ -25,12 +28,8 @@ jobs:
         with:
           poetry-version: ${{ matrix.poetry-version }}
       - name: Install dependencies
-        run: poetry install
-      - name: Run Ruff
-        run: poetry run ruff ./ruff_lsp ./tests
-      - name: Run Black
-        run: poetry run black --check ./ruff_lsp ./tests
-      - name: Run Mypy
-        run: poetry run mypy ./ruff_lsp ./tests
-      - name: Run unittest
-        run: poetry run python -m unittest
+        run: just install
+      - name: Run checks
+        run: just check
+      - name: Run tests
+        run: just test
