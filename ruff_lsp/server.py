@@ -10,6 +10,8 @@ import pathlib
 import re
 import sys
 import sysconfig
+import tokenize
+from io import BytesIO
 from typing import Any, Sequence, cast
 
 from lsprotocol.types import (
@@ -181,18 +183,34 @@ def _get_severity(*_codes: list[str]) -> DiagnosticSeverity:
     return DiagnosticSeverity.Warning
 
 
-NOQA_REGEX = re.compile(r"(?i:# noqa)(?::\s?(?P<codes>([A-Z]+[0-9]+(?:[,\s]+)?)+))?")
-CODE_REGEX = re.compile(r"[A-Z]{1,3}[0-9]{3}")
+NOQA_REGEX = re.compile(
+    r"(?i:# noqa)(?::\s?(?P<codes>([A-Z]{1,3}[0-9]{3,4}(?:[,\s]+)?)+))?"
+)
+CODE_REGEX = re.compile(r"[A-Z]{1,3}[0-9]{3,4}")
 
 
 @LSP_SERVER.feature(TEXT_DOCUMENT_HOVER)
 def hover(params: HoverParams) -> Hover | None:
     """LSP handler for textDocument/hover request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    match = NOQA_REGEX.search(document.lines[params.position.line])
+    line = document.lines[params.position.line]
+
+    comment_start = 0
+    try:
+        for tok in tokenize.tokenize(BytesIO(line.encode()).readline):
+            if tok.type == tokenize.COMMENT:
+                comment_start = tok.start[1]
+                break
+        else:
+            # This line doesn't contain a comment
+            return None
+    except tokenize.TokenError:
+        # We're unsure if this line contains a comment
+        pass
+
+    match = NOQA_REGEX.search(line[comment_start:])
     if not match:
         return None
-
     codes = match.group("codes")
     if not codes:
         return None
@@ -200,8 +218,8 @@ def hover(params: HoverParams) -> Hover | None:
     codes_start = match.start("codes")
     for match in CODE_REGEX.finditer(codes):
         start, end = match.span()
-        start += codes_start
-        end += codes_start
+        start += codes_start + comment_start
+        end += codes_start + comment_start
         if start <= params.position.character < end:
             code = match.group()
             result = _run_subcommand_on_document(document, ["--explain", code])
