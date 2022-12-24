@@ -1,6 +1,5 @@
 """Implementation of the LSP server for Ruff."""
 
-
 from __future__ import annotations
 
 import copy
@@ -22,6 +21,7 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DID_SAVE,
     TEXT_DOCUMENT_HOVER,
     AnnotatedTextEdit,
+    ClientCapabilities,
     CodeAction,
     CodeActionKind,
     CodeActionOptions,
@@ -55,6 +55,9 @@ from ruff_lsp import __version__, utils
 USER_DEFAULTS: dict[str, str] = {}
 WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
 INTERPRETER_PATHS: dict[str, str] = {}
+CLIENT_CAPABILITIES: dict[str, bool] = {
+    CODE_ACTION_RESOLVE: True,
+}
 
 MAX_WORKERS = 5
 LSP_SERVER = server.LanguageServer(
@@ -298,22 +301,24 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 and len(params.context.only) == 1
                 and kind in params.context.only
             ):
-                return [
-                    CodeAction(
-                        title="Ruff: Fix All",
-                        kind=kind,
-                        data=params.text_document.uri,
-                        edit=_create_workspace_edits(
-                            document, _formatting_helper(document) or []
+                results = _formatting_helper(document)
+                if results is not None:
+                    return [
+                        CodeAction(
+                            title="Ruff: Fix All",
+                            kind=kind,
+                            data=params.text_document.uri,
+                            edit=_create_workspace_edits(document, results),
+                            diagnostics=[
+                                diagnostic
+                                for diagnostic in params.context.diagnostics
+                                if diagnostic.source == "Ruff"
+                                and diagnostic.data is not None
+                            ],
                         ),
-                        diagnostics=[
-                            diagnostic
-                            for diagnostic in params.context.diagnostics
-                            if diagnostic.source == "Ruff"
-                            and diagnostic.data is not None
-                        ],
-                    ),
-                ]
+                    ]
+                else:
+                    return []
 
     actions: list[CodeAction] = []
 
@@ -322,30 +327,61 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
         if not params.context.only or (
             CodeActionKind.SourceOrganizeImports in params.context.only
         ):
-            actions.append(
-                CodeAction(
-                    title="Ruff: Organize Imports",
-                    kind=CodeActionKind.SourceOrganizeImports,
-                    data=params.text_document.uri,
-                    edit=None,
-                    diagnostics=[],
-                ),
-            )
+            if CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE]:
+                actions.append(
+                    CodeAction(
+                        title="Ruff: Organize Imports",
+                        kind=CodeActionKind.SourceOrganizeImports,
+                        data=params.text_document.uri,
+                        edit=None,
+                        diagnostics=[],
+                    ),
+                )
+            else:
+                results = _formatting_helper(document, select="I001")
+                if results is not None:
+                    actions.append(
+                        CodeAction(
+                            title="Ruff: Organize Imports",
+                            kind=CodeActionKind.SourceOrganizeImports,
+                            data=params.text_document.uri,
+                            edit=_create_workspace_edits(document, results),
+                            diagnostics=[],
+                        ),
+                    )
 
     if settings["fixAll"]:
         # Add "Ruff: Fix All" as a supported action.
         if not params.context.only or (
             CodeActionKind.SourceFixAll in params.context.only
         ):
-            actions.append(
-                CodeAction(
-                    title="Ruff: Fix All",
-                    kind=f"{CodeActionKind.SourceFixAll}.ruff",
-                    data=params.text_document.uri,
-                    edit=None,
-                    diagnostics=[],
-                ),
-            )
+            if CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE]:
+                actions.append(
+                    CodeAction(
+                        title="Ruff: Fix All",
+                        kind=CodeActionKind.SourceFixAll,
+                        data=params.text_document.uri,
+                        edit=None,
+                        diagnostics=[],
+                    ),
+                )
+            else:
+                results = _formatting_helper(document)
+                if results is not None:
+                    actions.append(
+                        CodeAction(
+                            title="Ruff: Fix All",
+                            kind=CodeActionKind.SourceFixAll,
+                            data=params.text_document.uri,
+                            edit=_create_workspace_edits(document, results),
+                            diagnostics=[
+                                diagnostic
+                                for diagnostic in params.context.diagnostics
+                                if diagnostic.source == "Ruff"
+                                and diagnostic.data is not None
+                            ],
+                        ),
+                    )
 
     # Add "Ruff: Autofix" for every fixable diagnostic.
     if not params.context.only or CodeActionKind.QuickFix in params.context.only:
@@ -515,6 +551,11 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
 @LSP_SERVER.feature(INITIALIZE)
 def initialize(params: InitializeParams) -> None:
     """LSP handler for initialize request."""
+    # Extract client capabilities.
+    CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE] = _supports_code_action_resolve(
+        params.capabilities
+    )
+
     # Extract `settings` from the initialization options.
     user_settings = (params.initialization_options or {}).get(  # type: ignore
         "settings",
@@ -542,6 +583,20 @@ def initialize(params: InitializeParams) -> None:
             LSP_SERVER.lsp.trace = TraceValues.Messages
         else:
             LSP_SERVER.lsp.trace = TraceValues.Off
+
+
+def _supports_code_action_resolve(capabilities: ClientCapabilities) -> bool:
+    """Returns True if the client supports codeAction/resolve request for edits."""
+    if capabilities.text_document is None:
+        return False
+
+    if capabilities.text_document.code_action is None:
+        return False
+
+    if capabilities.text_document.code_action.resolve_support is None:
+        return False
+
+    return "edit" in capabilities.text_document.code_action.resolve_support.properties
 
 
 ###
