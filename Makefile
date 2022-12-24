@@ -8,6 +8,6 @@ check:
 	poetry run mypy ./ruff_lsp ./tests
 
 test:
-	poetry run python -m unittest tests
+	poetry run python -m unittest
 
 .PHONY: fmt check test
