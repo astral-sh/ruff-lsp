@@ -179,16 +179,12 @@ the following settings are supported:
 
 ## Development
 
-Install [`just`](https://github.com/casey/just).
-
-`ruff-lsp` uses Poetry for environment management and packaging. To get started, clone the
-repository, install Poetry, and run `poetry install` (or `just install`).
-
-To automatically format the codebase, run: `just fmt`.
-
-To run lint and type checks, run: `just check`.
-
-To run tests, run: `just test`.
+- Install [`just`](https://github.com/casey/just), or see the `justfile` for corresponding commands.
+- Create and activate a virtual environment (e.g., `python -m venv .venv && source .venv/bin/activate`).
+- Install development dependencies (`just install`).
+- To automatically format the codebase, run: `just fmt`.
+- To run lint and type checks, run: `just check`.
+- To run tests, run: `just test`.
 
 ## License
 

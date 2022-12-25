@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import unittest
 from threading import Event
 
@@ -18,7 +19,7 @@ class TestServer(unittest.TestCase):
         contents = TEST_FILE_PATH.read_text()
 
         actual = []
-        with session.LspSession() as ls_session:
+        with session.LspSession(cwd=os.getcwd(), module="ruff_lsp") as ls_session:
             ls_session.initialize(defaults.VSCODE_DEFAULT_INITIALIZE)
 
             done = Event()
@@ -83,7 +84,7 @@ class TestServer(unittest.TestCase):
         contents = TEST_FILE_PATH.read_text()
 
         actual = []
-        with session.LspSession() as ls_session:
+        with session.LspSession(cwd=os.getcwd(), module="ruff_lsp") as ls_session:
             ls_session.initialize(
                 {**defaults.VSCODE_DEFAULT_INITIALIZE, "initializationOptions": None}
             )
