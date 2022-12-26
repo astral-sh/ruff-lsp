@@ -5,8 +5,8 @@ lock:
   pip-compile --resolver=backtracking --upgrade --extra dev -o requirements-dev.txt pyproject.toml
 
 install:
-  pip install -r requirements.txt
-  pip install -r requirements-dev.txt
+  pip install --no-deps -r requirements.txt
+  pip install --no-deps -r requirements-dev.txt
 
 fmt:
   ruff --fix ./ruff_lsp ./tests
