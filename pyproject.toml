@@ -7,43 +7,43 @@ name = "ruff-lsp"
 dynamic = ["version"]
 description = "A Language Server Protocol implementation for Ruff."
 authors = [
-    { name = "Charlie Marsh", email = "charlie.r.marsh@gmail.com" },
+  { name = "Charlie Marsh", email = "charlie.r.marsh@gmail.com" },
 ]
 maintainers = [
-    { name = "Charlie Marsh", email = "charlie.r.marsh@gmail.com" },
+  { name = "Charlie Marsh", email = "charlie.r.marsh@gmail.com" },
 ]
 requires-python = ">=3.7"
 license = "MIT"
 keywords = ["ruff", "lsp", "language-server", "language-server-protocol", "python"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: Software Development :: Quality Assurance",
-    "Topic :: Software Development :: Testing",
-    "Topic :: Utilities",
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Utilities",
 ]
 urls = { repository = "https://github.com/charliermarsh/ruff-lsp" }
 dependencies = [
-    "pygls>=1.0.0a3",
-    "ruff>=0.0.150",
-    "typing_extensions",
+  "pygls>=1.0.0a3",
+  "ruff>=0.0.150",
+  "typing_extensions",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "black==22.12.0",
-    "mypy==0.991",
-    "python-lsp-jsonrpc==1.0.0",
+  "black==22.12.0",
+  "mypy==0.991",
+  "python-lsp-jsonrpc==1.0.0",
 ]
 
 [project.scripts]
@@ -55,13 +55,13 @@ path = "ruff_lsp/__init__.py"
 [tool.ruff]
 line-length = 88
 select = [
-    "E",
-    "F",
-    "W",
-    "Q",
-    "UP",
-    "I",
-    "N",
+  "E",
+  "F",
+  "W",
+  "Q",
+  "UP",
+  "I",
+  "N",
 ]
 target-version = "py37"
 extend-exclude = ["tests/data"]
@@ -78,9 +78,9 @@ check_untyped_defs = true
 
 [[tool.mypy.overrides]]
 module = [
-    "debugpy.*",
-    "lsprotocol.*",
-    "pygls.*",
-    "pylsp_jsonrpc.*",
+  "debugpy.*",
+  "lsprotocol.*",
+  "pygls.*",
+  "pylsp_jsonrpc.*",
 ]
 ignore_missing_imports = true
