@@ -683,10 +683,13 @@ def _executable_path(settings: dict[str, Any]) -> str:
     bundle = get_bundle()
     if settings["path"]:
         # 'path' setting takes priority over everything.
-        log_to_output(f"Using 'path' setting: {settings['path']}")
         for path in settings["path"]:
+            path = os.path.expanduser(os.path.expandvars(path))
             if os.path.exists(path):
+                log_to_output(f"Using 'path' setting: {path}")
                 return path
+        else:
+            log_to_output(f"Could not find executable in 'path': {settings['path']}")
 
     if settings["importStrategy"] == "useBundled" and bundle:
         # If we're loading from the bundle, use the absolute path.
@@ -699,7 +702,7 @@ def _executable_path(settings: dict[str, Any]) -> str:
         # If there is a different interpreter set, find its script path.
         if settings["interpreter"][0] not in INTERPRETER_PATHS:
             INTERPRETER_PATHS[settings["interpreter"][0]] = utils.scripts(
-                settings["interpreter"][0]
+                os.path.expanduser(os.path.expandvars(settings["interpreter"][0]))
             )
 
         path = os.path.join(INTERPRETER_PATHS[settings["interpreter"][0]], TOOL_MODULE)
