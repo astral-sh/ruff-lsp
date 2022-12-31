@@ -393,7 +393,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
 
                     title: str
                     if fix.get("message"):
-                        title = f"Ruff: {fix['message']}"
+                        title = f"Ruff ({diagnostic.code}): {fix['message']}"
                     elif diagnostic.code:
                         title = f"Ruff: Fix {diagnostic.code}"
                     else:
