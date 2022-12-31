@@ -28,13 +28,13 @@ mypy-extensions==0.4.3
     #   mypy
 pathspec==0.10.3
     # via black
-platformdirs==2.6.0
+platformdirs==2.6.2
     # via black
 pygls==1.0.0
     # via ruff-lsp (pyproject.toml)
 python-lsp-jsonrpc==1.0.0
     # via ruff-lsp (pyproject.toml)
-ruff==0.0.194
+ruff==0.0.204
     # via ruff-lsp (pyproject.toml)
 tomli==2.0.1
     # via
@@ -52,6 +52,7 @@ typing-extensions==4.4.0
     #   cattrs
     #   importlib-metadata
     #   mypy
+    #   platformdirs
     #   ruff-lsp (pyproject.toml)
 ujson==5.6.0
     # via python-lsp-jsonrpc
