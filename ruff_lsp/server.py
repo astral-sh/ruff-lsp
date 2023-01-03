@@ -6,6 +6,7 @@ import copy
 import json
 import os
 import pathlib
+import platform
 import re
 import sys
 import sysconfig
@@ -66,7 +67,7 @@ LSP_SERVER = server.LanguageServer(
     max_workers=MAX_WORKERS,
 )
 
-TOOL_MODULE = "ruff.exe" if os.name == "nt" else "ruff"
+TOOL_MODULE = "ruff.exe" if platform.system() == "Windows" else "ruff"
 TOOL_DISPLAY = "Ruff"
 TOOL_ARGS = ["--no-cache", "--no-fix", "--quiet", "--format", "json", "-"]
 
