@@ -8,6 +8,7 @@ import os
 import pathlib
 import platform
 import re
+import shutil
 import sys
 import sysconfig
 from typing import Any, Sequence, cast
@@ -727,7 +728,11 @@ def _executable_path(settings: dict[str, Any]) -> str:
     # If the interpreter is same as the interpreter running this process, get the
     # script path directly.
     path = os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)
-    if bundle and not os.path.exists(path):
+    environment_path = shutil.which("ruff")
+    if environment_path:
+        log_to_output(f"Using environment executable: {environment_path}")
+        path = environment_path
+    elif bundle and not os.path.exists(path):
         log_to_output(
             f"Interpreter executable ({path}) not found; "
             f"falling back to bundled executable: {bundle}"
