@@ -56,6 +56,7 @@ from ruff_lsp import __version__, utils
 USER_DEFAULTS: dict[str, str] = {}
 WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
 INTERPRETER_PATHS: dict[str, str] = {}
+EXECUTABLE_VERSIONS: dict[str, str] = {}
 CLIENT_CAPABILITIES: dict[str, bool] = {
     CODE_ACTION_RESOLVE: True,
 }
@@ -278,7 +279,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 and len(params.context.only) == 1
                 and kind in params.context.only
             ):
-                results = _formatting_helper(document, select="I001")
+                results = _formatting_helper(document, only="I001")
                 if results is not None:
                     return [
                         CodeAction(
@@ -340,7 +341,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     ),
                 )
             else:
-                results = _formatting_helper(document, select="I001")
+                results = _formatting_helper(document, only="I001")
                 if results is not None:
                     actions.append(
                         CodeAction(
@@ -429,7 +430,7 @@ def resolve_code_action(params: CodeAction) -> CodeAction:
     ):
         # Generate the "Ruff: Organize Imports" edit
         params.edit = _create_workspace_edits(
-            document, _formatting_helper(document, select="I001") or []
+            document, _formatting_helper(document, only="I001") or []
         )
     elif settings["fixAll"] and params.kind in (
         CodeActionKind.SourceFixAll,
@@ -454,12 +455,13 @@ def apply_autofix(arguments: tuple[TextDocument]):
 
 
 def _formatting_helper(
-    document: workspace.Document, *, select: str | None = None
+    document: workspace.Document, *, only: str | None = None
 ) -> list[TextEdit] | None:
     result = _run_tool_on_document(
         document,
         use_stdin=True,
-        extra_args=["--fix", "--select", select] if select else ["--fix"],
+        extra_args=["--fix"],
+        only=only,
     )
     if result is None:
         return []
@@ -738,10 +740,20 @@ def _executable_path(settings: dict[str, Any]) -> str:
     return path
 
 
+def _executable_version(executable: str) -> str:
+    """Returns the version of the executable."""
+    if executable not in EXECUTABLE_VERSIONS:
+        version = utils.version(executable)
+        log_to_output(f"Inferred version {version} for: {executable}")
+        EXECUTABLE_VERSIONS[executable] = version
+    return EXECUTABLE_VERSIONS[executable]
+
+
 def _run_tool_on_document(
     document: workspace.Document,
     use_stdin: bool = False,
     extra_args: Sequence[str] = [],
+    only: str | None = None,
 ) -> utils.RunResult | None:
     """Runs tool on the given document.
 
@@ -759,9 +771,17 @@ def _run_tool_on_document(
     # Deep copy, to prevent accidentally updating global settings.
     settings = copy.deepcopy(_get_settings_by_document(document))
 
-    argv: list[str] = (
-        [_executable_path(settings)] + TOOL_ARGS + settings["args"] + list(extra_args)
-    )
+    executable = _executable_path(settings)
+    argv: list[str] = [executable] + TOOL_ARGS + settings["args"] + list(extra_args)
+
+    # If we're trying to run a single rule, add it to the command line, and disable
+    # all other rules (if the Ruff version is sufficiently recent).
+    if only:
+        if _executable_version(executable) >= "0.0.198":
+            argv += ["--extend-ignore", "ALL"]
+        argv += ["--extend-select", only]
+
+    # If we're using stdin, provide the filename.
     if use_stdin:
         argv += ["--stdin-filename", document.path]
     else:
