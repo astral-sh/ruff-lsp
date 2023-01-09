@@ -57,6 +57,11 @@ def scripts(interpreter: str) -> str:
     )
 
 
+def version(executable: str) -> str:
+    """Returns the version of the executable at the given path."""
+    return subprocess.check_output([executable, "--version"]).decode().strip()
+
+
 class RunResult:
     """Object to hold result from running tool."""
 
