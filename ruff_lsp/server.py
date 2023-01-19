@@ -454,6 +454,18 @@ def apply_autofix(arguments: tuple[TextDocument]):
     )
 
 
+@LSP_SERVER.command("ruff.applyOrganizeImports")
+def apply_organize_imports(arguments: tuple[TextDocument]):
+    uri = arguments[0]["uri"]
+    text_document = LSP_SERVER.workspace.get_document(uri)
+    LSP_SERVER.apply_edit(
+        _create_workspace_edits(
+            text_document, _formatting_helper(text_document, only="I001") or []
+        ),
+        "Ruff: Format imports",
+    )
+
+
 def _formatting_helper(
     document: workspace.Document, *, only: str | None = None
 ) -> list[TextEdit] | None:
