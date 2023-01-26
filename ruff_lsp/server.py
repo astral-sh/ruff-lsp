@@ -163,27 +163,34 @@ def _parse_output_using_regex(content: str) -> list[Diagnostic]:
         diagnostic = Diagnostic(
             range=Range(start=start, end=end),
             message=check.get("message"),
-            severity=_get_severity(check["code"], check.get("type", "Error")),
+            severity=_get_severity(check["code"]),
             code=check["code"],
             source=TOOL_DISPLAY,
             data=check.get("fix"),
-            tags=(
-                [DiagnosticTag.Unnecessary]
-                if check["code"]
-                in {
-                    "F401",  # `module` imported but unused
-                    "F841",  # local variable `name` is assigned to but never used
-                }
-                else None
-            ),
+            tags=_get_tags(check["code"]),
         )
         diagnostics.append(diagnostic)
 
     return diagnostics
 
 
-def _get_severity(*_codes: list[str]) -> DiagnosticSeverity:
-    return DiagnosticSeverity.Warning
+def _get_tags(code: str) -> list[DiagnosticTag] | None:
+    if code in {
+        "F401",  # `module` imported but unused
+        "F841",  # local variable `name` is assigned to but never used
+    }:
+        return [DiagnosticTag.Unnecessary]
+    return None
+
+
+def _get_severity(code: str) -> DiagnosticSeverity:
+    if code in {
+        "E902",  # `IOError`
+        "E999",  # `SyntaxError`
+    }:
+        return DiagnosticSeverity.Error
+    else:
+        return DiagnosticSeverity.Warning
 
 
 NOQA_REGEX = re.compile(r"(?i:# noqa)(?::\s?(?P<codes>([A-Z]+[0-9]+(?:[,\s]+)?)+))?")
