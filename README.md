@@ -100,24 +100,7 @@ Ruff also integrates with [`coc.nvim`](https://github.com/neoclide/coc.nvim/wiki
 ### Example: Sublime Text
 
 To use `ruff-lsp` with Sublime Text, install Sublime Text's [LSP](https://github.com/sublimelsp/LSP)
-package, then add something like the following to `LSP.sublime-settings`:
-
-```json
-{
-  "clients": {
-    "ruff-lsp": {
-      "command": ["ruff-lsp"],
-      "enabled": true,
-      "selector": "source.python",
-      "initializationOptions": {
-        "settings": {
-          "args": []
-        }
-      }
-    }
-  }
-}
-```
+and [LSP-ruff](https://github.com/sublimelsp/LSP-ruff) package.
 
 Upon successful installation, you should see errors surfaced directly in your editor:
 
