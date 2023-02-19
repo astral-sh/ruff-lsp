@@ -21,7 +21,6 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_DID_SAVE,
-    TEXT_DOCUMENT_FORMATTING,
     TEXT_DOCUMENT_HOVER,
     AnnotatedTextEdit,
     ClientCapabilities,
@@ -36,7 +35,6 @@ from lsprotocol.types import (
     DidCloseTextDocumentParams,
     DidOpenTextDocumentParams,
     DidSaveTextDocumentParams,
-    DocumentFormattingParams,
     Hover,
     HoverParams,
     InitializeParams,
@@ -452,21 +450,6 @@ def resolve_code_action(params: CodeAction) -> CodeAction:
         )
 
     return params
-
-
-@LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
-def formatting(params: DocumentFormattingParams) -> list[TextEdit] | None:
-    """LSP handler for textDocument/formatting request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-
-    # Deep copy, to prevent accidentally updating global settings.
-    settings = copy.deepcopy(_get_settings_by_document(document))
-
-    if settings["fixAll"]:
-        return _formatting_helper(document)
-    elif settings["organizeImports"]:
-        return _formatting_helper(document, only="I001")
-    return None
 
 
 @LSP_SERVER.command("ruff.applyAutofix")
