@@ -97,7 +97,7 @@ def did_save(params: DidSaveTextDocumentParams) -> None:
 
 @LSP_SERVER.feature(TEXT_DOCUMENT_DID_CHANGE)
 def did_change(params: DidChangeTextDocumentParams) -> None:
-    """LSP handler for textDocument/didSave request."""
+    """LSP handler for textDocument/didChange request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
     diagnostics: list[Diagnostic] = _linting_helper(document)
     LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
@@ -194,7 +194,9 @@ def _get_severity(code: str) -> DiagnosticSeverity:
         return DiagnosticSeverity.Warning
 
 
-NOQA_REGEX = re.compile(r"(?i:# noqa)(?::\s?(?P<codes>([A-Z]+[0-9]+(?:[,\s]+)?)+))?")
+NOQA_REGEX = re.compile(
+    r"(?i:# (?:(?:ruff|flake8): )?noqa)(?::\s?(?P<codes>([A-Z]+[0-9]+(?:[,\s]+)?)+))?"
+)
 CODE_REGEX = re.compile(r"[A-Z]{1,3}[0-9]{3}")
 
 
