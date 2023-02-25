@@ -195,7 +195,8 @@ def _get_severity(code: str) -> DiagnosticSeverity:
 
 
 NOQA_REGEX = re.compile(
-    r"(?i:# (?:(?:ruff|flake8): )?noqa)(?::\s?(?P<codes>([A-Z]+[0-9]+(?:[,\s]+)?)+))?"
+    r"(?i:# (?:(?:ruff|flake8): )?(?P<noqa>noqa))"
+    r"(?::\s?(?P<codes>([A-Z]+[0-9]+(?:[,\s]+)?)+))?"
 )
 CODE_REGEX = re.compile(r"[A-Z]{1,3}[0-9]{3}")
 
@@ -422,6 +423,47 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                             diagnostics=[diagnostic],
                         ),
                     )
+
+    # Add "Disable for this line" for every diagnostic.
+    if not params.context.only or CodeActionKind.QuickFix in params.context.only:
+        for diagnostic in params.context.diagnostics:
+            if diagnostic.source == "Ruff":
+                line = document.lines[diagnostic.range.start.line].rstrip("\r\n")
+                match = NOQA_REGEX.search(line)
+                # `foo  # noqa: OLD` -> `foo  # noqa: OLD,NEW`
+                if match and match.group("codes") is not None:
+                    codes = match.group("codes") + f",{diagnostic.code}"
+                    start, end = match.start("codes"), match.end("codes")
+                    new_line = line[:start] + codes + line[end:]
+                # `foo  # noqa` -> `foo  # noqa: NEW`
+                elif match:
+                    end = match.end("noqa")
+                    new_line = line[:end] + f": {diagnostic.code}" + line[end:]
+                # `foo` -> `foo  # noqa: NEW`
+                else:
+                    new_line = f"{line}  # noqa: {diagnostic.code}"
+                fix = Fix(
+                    content=new_line,
+                    message=None,
+                    location=Location(
+                        row=diagnostic.range.start.line + 1,
+                        column=0,
+                    ),
+                    end_location=Location(
+                        row=diagnostic.range.start.line + 1,
+                        column=len(line),
+                    ),
+                )
+
+                actions.append(
+                    CodeAction(
+                        title=f"Ruff: Disable {diagnostic.code} for this line",
+                        kind=CodeActionKind.QuickFix,
+                        data=params.text_document.uri,
+                        edit=_create_workspace_edit(document, fix),
+                        diagnostics=[diagnostic],
+                    ),
+                )
 
     return actions if actions else None
 
