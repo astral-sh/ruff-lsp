@@ -173,7 +173,7 @@ def _parse_output_using_regex(content: str) -> list[Diagnostic]:
             source=TOOL_DISPLAY,
             data=DiagnosticData(
                 fix=check.get("fix"),
-                # Available since Ruff v0.0.TBD.
+                # Available since Ruff v0.0.253.
                 noqa_row=check.get("noqa_row"),
             ),
             tags=_get_tags(check["code"]),
@@ -446,7 +446,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     match = NOQA_REGEX.search(line)
                     # `foo  # noqa: OLD` -> `foo  # noqa: OLD,NEW`
                     if match and match.group("codes") is not None:
-                        codes = match.group("codes") + f",{diagnostic.code}"
+                        codes = match.group("codes") + f", {diagnostic.code}"
                         start, end = match.start("codes"), match.end("codes")
                         new_line = line[:start] + codes + line[end:]
                     # `foo  # noqa` -> `foo  # noqa: NEW`
