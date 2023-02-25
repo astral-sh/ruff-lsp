@@ -132,10 +132,13 @@ def _parse_output_using_regex(content: str) -> list[Diagnostic]:
     #   {
     #     "code": "F841",
     #     "message": "Local variable `x` is assigned to but never used",
-    #     "fixed": false,
     #     "location": {
     #       "row": 2,
     #       "column": 5
+    #     },
+    #     "end_location": {
+    #       "row": 2,
+    #       "column": 6
     #     },
     #     "fix": {
     #       "content: "",
@@ -148,7 +151,8 @@ def _parse_output_using_regex(content: str) -> list[Diagnostic]:
     #         "column: 0
     #       }
     #     },
-    #     "filename": "/path/to/test.py"
+    #     "filename": "/path/to/test.py",
+    #     "noqa_row": 2
     #   },
     #   ...
     # ]
@@ -167,7 +171,11 @@ def _parse_output_using_regex(content: str) -> list[Diagnostic]:
             severity=_get_severity(check["code"]),
             code=check["code"],
             source=TOOL_DISPLAY,
-            data=check.get("fix"),
+            data=DiagnosticData(
+                fix=check.get("fix"),
+                # Available since Ruff v0.0.TBD.
+                noqa_row=check.get("noqa_row"),
+            ),
             tags=_get_tags(check["code"]),
         )
         diagnostics.append(diagnostic)
@@ -254,6 +262,11 @@ class Fix(TypedDict):
     end_location: Location
 
 
+class DiagnosticData(TypedDict):
+    fix: Fix | None
+    noqa_row: int | None
+
+
 @LSP_SERVER.feature(
     TEXT_DOCUMENT_CODE_ACTION,
     CodeActionOptions(
@@ -327,7 +340,8 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                                 diagnostic
                                 for diagnostic in params.context.diagnostics
                                 if diagnostic.source == "Ruff"
-                                and diagnostic.data is not None
+                                and cast(DiagnosticData, diagnostic.data)["fix"]
+                                is not None
                             ],
                         ),
                     ]
@@ -392,7 +406,8 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                                 diagnostic
                                 for diagnostic in params.context.diagnostics
                                 if diagnostic.source == "Ruff"
-                                and diagnostic.data is not None
+                                and cast(DiagnosticData, diagnostic.data)["fix"]
+                                is not None
                             ],
                         ),
                     )
@@ -401,9 +416,8 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     if not params.context.only or CodeActionKind.QuickFix in params.context.only:
         for diagnostic in params.context.diagnostics:
             if diagnostic.source == "Ruff":
-                if diagnostic.data is not None:
-                    fix = cast(Fix, diagnostic.data)
-
+                fix = cast(DiagnosticData, diagnostic.data)["fix"]
+                if fix is not None:
                     title: str
                     if fix.get("message"):
                         title = f"Ruff ({diagnostic.code}): {fix['message']}"
@@ -417,9 +431,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                             title=title,
                             kind=CodeActionKind.QuickFix,
                             data=params.text_document.uri,
-                            edit=_create_workspace_edit(
-                                document, cast(Fix, diagnostic.data)
-                            ),
+                            edit=_create_workspace_edit(document, fix),
                             diagnostics=[diagnostic],
                         ),
                     )
@@ -428,42 +440,44 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     if not params.context.only or CodeActionKind.QuickFix in params.context.only:
         for diagnostic in params.context.diagnostics:
             if diagnostic.source == "Ruff":
-                line = document.lines[diagnostic.range.start.line].rstrip("\r\n")
-                match = NOQA_REGEX.search(line)
-                # `foo  # noqa: OLD` -> `foo  # noqa: OLD,NEW`
-                if match and match.group("codes") is not None:
-                    codes = match.group("codes") + f",{diagnostic.code}"
-                    start, end = match.start("codes"), match.end("codes")
-                    new_line = line[:start] + codes + line[end:]
-                # `foo  # noqa` -> `foo  # noqa: NEW`
-                elif match:
-                    end = match.end("noqa")
-                    new_line = line[:end] + f": {diagnostic.code}" + line[end:]
-                # `foo` -> `foo  # noqa: NEW`
-                else:
-                    new_line = f"{line}  # noqa: {diagnostic.code}"
-                fix = Fix(
-                    content=new_line,
-                    message=None,
-                    location=Location(
-                        row=diagnostic.range.start.line + 1,
-                        column=0,
-                    ),
-                    end_location=Location(
-                        row=diagnostic.range.start.line + 1,
-                        column=len(line),
-                    ),
-                )
+                noqa_row = cast(DiagnosticData, diagnostic.data)["noqa_row"]
+                if noqa_row is not None:
+                    line = document.lines[noqa_row - 1].rstrip("\r\n")
+                    match = NOQA_REGEX.search(line)
+                    # `foo  # noqa: OLD` -> `foo  # noqa: OLD,NEW`
+                    if match and match.group("codes") is not None:
+                        codes = match.group("codes") + f",{diagnostic.code}"
+                        start, end = match.start("codes"), match.end("codes")
+                        new_line = line[:start] + codes + line[end:]
+                    # `foo  # noqa` -> `foo  # noqa: NEW`
+                    elif match:
+                        end = match.end("noqa")
+                        new_line = line[:end] + f": {diagnostic.code}" + line[end:]
+                    # `foo` -> `foo  # noqa: NEW`
+                    else:
+                        new_line = f"{line}  # noqa: {diagnostic.code}"
+                    fix = Fix(
+                        content=new_line,
+                        message=None,
+                        location=Location(
+                            row=noqa_row,
+                            column=0,
+                        ),
+                        end_location=Location(
+                            row=noqa_row,
+                            column=len(line),
+                        ),
+                    )
 
-                actions.append(
-                    CodeAction(
-                        title=f"Ruff: Disable {diagnostic.code} for this line",
-                        kind=CodeActionKind.QuickFix,
-                        data=params.text_document.uri,
-                        edit=_create_workspace_edit(document, fix),
-                        diagnostics=[diagnostic],
-                    ),
-                )
+                    actions.append(
+                        CodeAction(
+                            title=f"Ruff: Disable {diagnostic.code} for this line",
+                            kind=CodeActionKind.QuickFix,
+                            data=params.text_document.uri,
+                            edit=_create_workspace_edit(document, fix),
+                            diagnostics=[diagnostic],
+                        ),
+                    )
 
     return actions if actions else None
 

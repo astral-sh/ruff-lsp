@@ -14,6 +14,8 @@ TIMEOUT_SECONDS = 10
 
 
 class TestServer(unittest.TestCase):
+    maxDiff = None  # noqa: N815
+
     def test_linting_example(self):
         logging.info(TEST_FILE_PATH)
         contents = TEST_FILE_PATH.read_text()
@@ -54,10 +56,13 @@ class TestServer(unittest.TestCase):
                             "end": {"line": 0, "character": 10},
                         },
                         "data": {
-                            "content": "",
-                            "message": "Remove unused import: `sys`",
-                            "location": {"row": 1, "column": 0},
-                            "end_location": {"row": 2, "column": 0},
+                            "fix": {
+                                "content": "",
+                                "message": "Remove unused import: `sys`",
+                                "location": {"row": 1, "column": 0},
+                                "end_location": {"row": 2, "column": 0},
+                            },
+                            "noqa_row": None,
                         },
                         "message": "`sys` imported but unused",
                         "severity": 2,
@@ -70,6 +75,7 @@ class TestServer(unittest.TestCase):
                             "start": {"line": 2, "character": 6},
                             "end": {"line": 2, "character": 7},
                         },
+                        "data": {"fix": None, "noqa_row": None},
                         "message": "Undefined name `x`",
                         "severity": 2,
                         "code": "F821",
@@ -122,10 +128,13 @@ class TestServer(unittest.TestCase):
                             "end": {"line": 0, "character": 10},
                         },
                         "data": {
-                            "content": "",
-                            "message": "Remove unused import: `sys`",
-                            "location": {"row": 1, "column": 0},
-                            "end_location": {"row": 2, "column": 0},
+                            "fix": {
+                                "content": "",
+                                "message": "Remove unused import: `sys`",
+                                "location": {"row": 1, "column": 0},
+                                "end_location": {"row": 2, "column": 0},
+                            },
+                            "noqa_row": None,
                         },
                         "message": "`sys` imported but unused",
                         "severity": 2,
@@ -138,6 +147,7 @@ class TestServer(unittest.TestCase):
                             "start": {"line": 2, "character": 6},
                             "end": {"line": 2, "character": 7},
                         },
+                        "data": {"fix": None, "noqa_row": None},
                         "message": "Undefined name `x`",
                         "severity": 2,
                         "code": "F821",
