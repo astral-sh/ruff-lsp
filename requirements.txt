@@ -12,15 +12,17 @@ cattrs==22.2.0
     # via lsprotocol
 exceptiongroup==1.1.0
     # via cattrs
-lsprotocol==2022.0.0a9
-    # via pygls
-pygls==1.0.0
+lsprotocol==2023.0.0a1
+    # via
+    #   pygls
+    #   ruff-lsp (pyproject.toml)
+pygls==1.0.1
     # via ruff-lsp (pyproject.toml)
-ruff==0.0.204
+ruff==0.0.253
     # via ruff-lsp (pyproject.toml)
 typeguard==2.13.3
     # via pygls
-typing-extensions==4.4.0
+typing-extensions==4.5.0
     # via
     #   cattrs
     #   ruff-lsp (pyproject.toml)
