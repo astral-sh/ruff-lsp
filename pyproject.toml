@@ -34,8 +34,9 @@ classifiers = [
 ]
 urls = { repository = "https://github.com/charliermarsh/ruff-lsp" }
 dependencies = [
-  "pygls>=1.0.0a3",
-  "ruff>=0.0.150",
+  "pygls>=1.0.1",
+  "lsprotocol>=2023.0.0a1",
+  "ruff>=0.0.253",
   "typing_extensions",
 ]
 
