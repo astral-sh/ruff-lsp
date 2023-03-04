@@ -92,6 +92,20 @@ Upon successful installation, you should see Ruff's diagnostics surfaced directl
 
 ![Code Actions available in Neovim](https://user-images.githubusercontent.com/1309177/208278707-25fa37e4-079d-4597-ad35-b95dba066960.png)
 
+Note that if you're using Ruff alongside another LSP (like Pyright), you may want to defer to that
+LSP for certain capabilities, like `textDocument/hover`:
+
+```lua
+local on_attach = function(client, bufnr)
+  -- Disable hover in favor of Pyright
+  client.resolved_capabilities.hover = false
+end
+
+require('lspconfig').ruff_lsp.setup {
+  on_attach = on_attach,
+}
+```
+
 Ruff also integrates with [`coc.nvim`](https://github.com/neoclide/coc.nvim/wiki/Language-servers#using-ruff-lsp):
 
 ```json
