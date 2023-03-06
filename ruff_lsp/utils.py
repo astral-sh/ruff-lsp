@@ -7,11 +7,11 @@ import os.path
 import site
 import subprocess
 import sys
-from typing import Any, Sequence
+import tempfile
+from typing import Any, List, Sequence, Tuple, Union
 
 
-def as_list(content: Any | list[Any] | tuple[Any, ...]) -> list[Any]:
-    """Ensures we always get a list"""
+def as_list(content: Union[Any, List[Any], Tuple[Any, ...]]) -> List[Any]:
     if isinstance(content, (list, tuple)):
         return list(content)
     return [content]
@@ -27,6 +27,7 @@ _site_paths = tuple(
 
 def is_same_path(file_path1: str, file_path2: str) -> bool:
     """Returns true if two paths are the same."""
+    path = file_path1
     return os.path.normcase(os.path.normpath(file_path1)) == os.path.normcase(
         os.path.normpath(file_path2)
     )
