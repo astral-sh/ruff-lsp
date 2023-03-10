@@ -794,31 +794,30 @@ def _executable_path(settings: dict[str, Any]) -> str:
             )
 
         path = os.path.join(INTERPRETER_PATHS[settings["interpreter"][0]], TOOL_MODULE)
-        if bundle and not os.path.exists(path):
-            log_to_output(
-                f"External interpreter executable ({path}) not found; "
-                f"falling back to bundled executable: {bundle}"
-            )
-            path = bundle
-        else:
-            log_to_output(f"Using external interpreter executable: {path}")
+    else:
+        path = os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)
+
+    # First choice: the executable in the current interpreter's scripts directory.
+    if os.path.exists(path):
+        log_to_output(f"Using interpreter executable: {path}")
         return path
 
-    # If the interpreter is same as the interpreter running this process, get the
-    # script path directly.
-    path = os.path.join(sysconfig.get_path("scripts"), TOOL_MODULE)
+    # Second choice: the executable in the global environment.
     environment_path = shutil.which("ruff")
     if environment_path:
         log_to_output(f"Using environment executable: {environment_path}")
-        path = environment_path
-    elif bundle and not os.path.exists(path):
+        return environment_path
+
+    # Third choice: bundled executable.
+    if bundle:
         log_to_output(
             f"Interpreter executable ({path}) not found; "
             f"falling back to bundled executable: {bundle}"
         )
-        path = bundle
-    else:
-        log_to_output(f"Using interpreter executable: {path}")
+        return bundle
+
+    # Last choice: just return the expected path for the current interpreter.
+    log_to_output(f"Unable to find interpreter executable: {path}")
     return path
 
 
