@@ -71,7 +71,15 @@ LSP_SERVER = server.LanguageServer(
 
 TOOL_MODULE = "ruff.exe" if platform.system() == "Windows" else "ruff"
 TOOL_DISPLAY = "Ruff"
-TOOL_ARGS = ["--no-cache", "--no-fix", "--quiet", "--format", "json", "-"]
+TOOL_ARGS = [
+    "--force-exclude",
+    "--no-cache",
+    "--no-fix",
+    "--quiet",
+    "--format",
+    "json",
+    "-",
+]
 
 
 ###
@@ -770,6 +778,7 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
 def _executable_path(settings: dict[str, Any]) -> str:
     """Returns the path to the executable."""
     bundle = get_bundle()
+    print("FOO")
     if settings["path"]:
         # 'path' setting takes priority over everything.
         for path in settings["path"]:
