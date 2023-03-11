@@ -194,6 +194,7 @@ def _get_tags(code: str) -> list[DiagnosticTag] | None:
 
 def _get_severity(code: str) -> DiagnosticSeverity:
     if code in {
+        "F821",  # undefined name `name`
         "E902",  # `IOError`
         "E999",  # `SyntaxError`
     }:
