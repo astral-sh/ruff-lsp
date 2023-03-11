@@ -778,7 +778,6 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
 def _executable_path(settings: dict[str, Any]) -> str:
     """Returns the path to the executable."""
     bundle = get_bundle()
-    print("FOO")
     if settings["path"]:
         # 'path' setting takes priority over everything.
         for path in settings["path"]:

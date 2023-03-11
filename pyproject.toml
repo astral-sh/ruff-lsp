@@ -63,6 +63,8 @@ select = [
   "UP",
   "I",
   "N",
+  "T201",
+  "T203",
 ]
 target-version = "py37"
 
