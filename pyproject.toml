@@ -65,15 +65,12 @@ select = [
   "N",
 ]
 target-version = "py37"
-extend-exclude = ["tests/data"]
 
 [tool.black]
 line-length = 88
-extend-exclude = "tests/data"
 
 [tool.mypy]
 files = ["ruff_lsp", "tests"]
-exclude = "tests/data"
 no_implicit_optional = true
 check_untyped_defs = true
 
