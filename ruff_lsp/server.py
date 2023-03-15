@@ -54,7 +54,7 @@ from typing_extensions import TypedDict
 
 from ruff_lsp import __version__, utils
 
-USER_DEFAULTS: dict[str, str] = {}
+GLOBAL_SETTINGS: dict[str, str] = {}
 WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
 INTERPRETER_PATHS: dict[str, str] = {}
 EXECUTABLE_VERSIONS: dict[str, str] = {}
@@ -654,18 +654,36 @@ def initialize(params: InitializeParams) -> None:
     )
 
     # Extract `settings` from the initialization options.
-    user_settings = (params.initialization_options or {}).get(  # type: ignore
+    workspace_settings = (params.initialization_options or {}).get(  # type: ignore
         "settings",
     )
-    if isinstance(user_settings, dict):
+    global_settings = (params.initialization_options or {}).get(  # type: ignore
+        "globalSettings", {}
+    )
+
+    log_to_output(
+        f"Workspace settings: "
+        f"{json.dumps(workspace_settings, indent=4, ensure_ascii=False)}"
+    )
+    log_to_output(
+        f"Global settings: "
+        f"{json.dumps(GLOBAL_SETTINGS, indent=4, ensure_ascii=False)}"
+    )
+
+    # Preserve any "global" settings.
+    if global_settings:
+        GLOBAL_SETTINGS.update(global_settings)
+    elif isinstance(workspace_settings, dict):
         # In Sublime Text, Neovim, and probably others, we're passed a single
         # `settings`, which we'll treat as defaults for any future files.
-        USER_DEFAULTS.update(user_settings)
-        settings = [user_settings]
-    elif isinstance(user_settings, list):
+        GLOBAL_SETTINGS.update(workspace_settings)
+
+    # Update workspace settings.
+    if isinstance(workspace_settings, dict):
+        settings = [workspace_settings]
+    elif isinstance(workspace_settings, list):
         # In VS Code, we're passed a list of `settings`, one for each workspace folder.
-        # It doesn't really make sense to save these defaults.
-        settings = user_settings
+        settings = workspace_settings
     else:
         settings = []
 
@@ -703,14 +721,14 @@ def _supports_code_action_resolve(capabilities: ClientCapabilities) -> bool:
 
 def _default_settings() -> dict[str, Any]:
     return {
-        "logLevel": USER_DEFAULTS.get("logLevel", "error"),
-        "args": USER_DEFAULTS.get("args", []),
-        "path": USER_DEFAULTS.get("path", []),
-        "interpreter": USER_DEFAULTS.get("interpreter", [sys.executable]),
-        "importStrategy": USER_DEFAULTS.get("importStrategy", "fromEnvironment"),
-        "showNotifications": USER_DEFAULTS.get("showNotifications", "off"),
-        "organizeImports": USER_DEFAULTS.get("organizeImports", True),
-        "fixAll": USER_DEFAULTS.get("fixAll", True),
+        "logLevel": GLOBAL_SETTINGS.get("logLevel", "error"),
+        "args": GLOBAL_SETTINGS.get("args", []),
+        "path": GLOBAL_SETTINGS.get("path", []),
+        "interpreter": GLOBAL_SETTINGS.get("interpreter", [sys.executable]),
+        "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "fromEnvironment"),
+        "showNotifications": GLOBAL_SETTINGS.get("showNotifications", "off"),
+        "organizeImports": GLOBAL_SETTINGS.get("organizeImports", True),
+        "fixAll": GLOBAL_SETTINGS.get("fixAll", True),
     }
 
 
@@ -778,6 +796,7 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
 def _executable_path(settings: dict[str, Any]) -> str:
     """Returns the path to the executable."""
     bundle = get_bundle()
+
     if settings["path"]:
         # 'path' setting takes priority over everything.
         for path in settings["path"]:
