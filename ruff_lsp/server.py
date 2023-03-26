@@ -123,10 +123,35 @@ def _linting_helper(document: workspace.Document) -> list[Diagnostic]:
     result = _run_tool_on_document(document, use_stdin=True)
     if result is None:
         return []
-    return _parse_output_using_regex(result.stdout) if result.stdout else []
+    return _parse_output(result.stdout) if result.stdout else []
 
 
-def _parse_output_using_regex(content: str) -> list[Diagnostic]:
+def _parse_fix(content: Fix | LegacyFix | None) -> Fix | None:
+    """Parse the fix from the Ruff output."""
+    if content is None:
+        return None
+
+    if content.get("edits") is None:
+        # Prior to v0.0.260, Ruff returned a single edit.
+        legacy_fix = cast(LegacyFix, content)
+        return {
+            "message": legacy_fix.get("message"),
+            "edits": [
+                {
+                    "content": legacy_fix["content"],
+                    "location": legacy_fix["location"],
+                    "end_location": legacy_fix["end_location"],
+                }
+            ],
+        }
+    else:
+        # Since v0.0.260, Ruff returns a list of edits.
+        fix = cast(Fix, content)
+        return fix
+
+
+def _parse_output(content: str) -> list[Diagnostic]:
+    """Parse Ruff's JSON output."""
     diagnostics: list[Diagnostic] = []
 
     line_at_1 = True
@@ -149,15 +174,18 @@ def _parse_output_using_regex(content: str) -> list[Diagnostic]:
     #       "column": 6
     #     },
     #     "fix": {
-    #       "content: "",
-    #       "location": {
-    #         "row": 2,
-    #         "column: 5
-    #       },
-    #       "end_location": {
-    #         "row": 3,
-    #         "column: 0
-    #       }
+    #       "message": "Remove unused variable",
+    #       "edits": [
+    #         "content: "",
+    #         "location": {
+    #           "row": 2,
+    #           "column: 5
+    #         },
+    #         "end_location": {
+    #           "row": 3,
+    #           "column: 0
+    #         }
+    #       ]
     #     },
     #     "filename": "/path/to/test.py",
     #     "noqa_row": 2
@@ -180,7 +208,7 @@ def _parse_output_using_regex(content: str) -> list[Diagnostic]:
             code=check["code"],
             source=TOOL_DISPLAY,
             data=DiagnosticData(
-                fix=check.get("fix"),
+                fix=_parse_fix(check.get("fix")),
                 # Available since Ruff v0.0.253.
                 noqa_row=check.get("noqa_row"),
             ),
@@ -264,16 +292,34 @@ class Location(TypedDict):
     column: int
 
 
-class Fix(TypedDict):
+class Edit(TypedDict):
     content: str
-    message: str | None
     location: Location
     end_location: Location
+
+
+class Fix(TypedDict):
+    """A fix for a diagnostic, represented as a list of edits."""
+
+    message: str | None
+    edits: list[Edit]
 
 
 class DiagnosticData(TypedDict):
     fix: Fix | None
     noqa_row: int | None
+
+
+class LegacyFix(TypedDict):
+    """A fix for a diagnostic, represented as a single edit.
+
+    Matches Ruff's output prior to v0.0.260.
+    """
+
+    message: str | None
+    content: str
+    location: Location
+    end_location: Location
 
 
 @LSP_SERVER.feature(
@@ -466,16 +512,20 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     else:
                         new_line = f"{line}  # noqa: {diagnostic.code}"
                     fix = Fix(
-                        content=new_line,
                         message=None,
-                        location=Location(
-                            row=noqa_row,
-                            column=0,
-                        ),
-                        end_location=Location(
-                            row=noqa_row,
-                            column=len(line),
-                        ),
+                        edits=[
+                            Edit(
+                                content=new_line,
+                                location=Location(
+                                    row=noqa_row,
+                                    column=0,
+                                ),
+                                end_location=Location(
+                                    row=noqa_row,
+                                    column=len(line),
+                                ),
+                            )
+                        ],
                     )
 
                     actions.append(
@@ -605,16 +655,17 @@ def _create_workspace_edit(document: workspace.Document, fix: Fix) -> WorkspaceE
                     TextEdit(
                         range=Range(
                             start=Position(
-                                line=fix["location"]["row"] - 1,
-                                character=fix["location"]["column"],
+                                line=edit["location"]["row"] - 1,
+                                character=edit["location"]["column"],
                             ),
                             end=Position(
-                                line=fix["end_location"]["row"] - 1,
-                                character=fix["end_location"]["column"],
+                                line=edit["end_location"]["row"] - 1,
+                                character=edit["end_location"]["column"],
                             ),
                         ),
-                        new_text=fix["content"],
+                        new_text=edit["content"],
                     )
+                    for edit in fix["edits"]
                 ],
             )
         ],
