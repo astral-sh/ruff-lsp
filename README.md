@@ -98,7 +98,7 @@ LSP for certain capabilities, like `textDocument/hover`:
 ```lua
 local on_attach = function(client, bufnr)
   -- Disable hover in favor of Pyright
-  client.resolved_capabilities.hover = false
+  client.server_capabilities.hoverProvider = false
 end
 
 require('lspconfig').ruff_lsp.setup {
