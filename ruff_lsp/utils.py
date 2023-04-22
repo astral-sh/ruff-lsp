@@ -73,7 +73,7 @@ class RunResult:
 def run_path(
     argv: Sequence[str],
     use_stdin: bool,
-    cwd: str,
+    cwd: str | None = None,
     source: str | None = None,
 ) -> RunResult:
     """Runs as an executable."""
