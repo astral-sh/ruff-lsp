@@ -788,6 +788,7 @@ def _update_workspace_settings(settings: list[dict[str, Any]]) -> None:
         workspace_path = os.getcwd()
         WORKSPACE_SETTINGS[workspace_path] = {
             **_default_settings(),
+            "cwd": workspace_path,
             "workspaceFS": workspace_path,
             "workspace": uris.from_fs_path(workspace_path),
         }
@@ -799,6 +800,7 @@ def _update_workspace_settings(settings: list[dict[str, Any]]) -> None:
             WORKSPACE_SETTINGS[workspace_path] = {
                 **_default_settings(),
                 **setting,
+                "cwd": workspace_path,
                 "workspaceFS": workspace_path,
                 "workspace": setting["workspace"],
             }
@@ -807,6 +809,7 @@ def _update_workspace_settings(settings: list[dict[str, Any]]) -> None:
             WORKSPACE_SETTINGS[workspace_path] = {
                 **_default_settings(),
                 **setting,
+                "cwd": workspace_path,
                 "workspaceFS": workspace_path,
                 "workspace": uris.from_fs_path(workspace_path),
             }
@@ -832,6 +835,7 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
         workspace_path = os.fspath(pathlib.Path(document.path).parent)
         return {
             **_default_settings(),
+            "cwd": None,
             "workspaceFS": workspace_path,
             "workspace": uris.from_fs_path(workspace_path),
         }
@@ -951,7 +955,7 @@ def _run_tool_on_document(
     result: utils.RunResult = utils.run_path(
         argv=argv,
         use_stdin=use_stdin,
-        cwd=settings["workspaceFS"],
+        cwd=settings["cwd"],
         source=document.source.replace("\r\n", "\n"),
     )
     if result.stderr:
@@ -974,7 +978,7 @@ def _run_subcommand_on_document(
     result: utils.RunResult = utils.run_path(
         argv=argv,
         use_stdin=False,
-        cwd=settings["workspaceFS"],
+        cwd=settings["cwd"],
     )
     if result.stderr:
         log_to_output(result.stderr)
