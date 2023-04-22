@@ -11,6 +11,7 @@ import re
 import shutil
 import sys
 import sysconfig
+import datetime
 from typing import Any, Sequence, cast
 
 from lsprotocol.types import (
@@ -987,11 +988,21 @@ def _run_subcommand_on_document(
 ###
 
 
+def Logs_Write(filePath:str, messages:str):
+
+    #If desired, it saves the incoming logs to the desired location.
+
+
+    file = open(filePath, 'w')
+    file.write(messages)
+    file.close()
+    
+
 def log_to_output(message: str, msg_type: MessageType = MessageType.Log) -> None:
     LSP_SERVER.show_message_log(message, msg_type)
 
 
-def log_error(message: str) -> None:
+def log_error(message: str, Logs: bool = False, log_filePath:str = 'NONE') -> None:
     LSP_SERVER.show_message_log(message, MessageType.Error)
     if os.getenv("LS_SHOW_NOTIFICATION", "off") in [
         "onError",
@@ -1001,16 +1012,39 @@ def log_error(message: str) -> None:
         LSP_SERVER.show_message(message, MessageType.Error)
 
 
-def log_warning(message: str) -> None:
+        if Logs != False and Logs != 'NONE':
+
+            log_message = datetime.datetime.now() + message 
+            Logs_Write(log_filePath, str(log_message))
+
+11
+def log_warning(message: str, Logs: bool = False, log_filePath:str = 'NONE') -> None:
     LSP_SERVER.show_message_log(message, MessageType.Warning)
     if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["onWarning", "always"]:
         LSP_SERVER.show_message(message, MessageType.Warning)
 
 
-def log_always(message: str) -> None:
+        if Logs != False and Logs != 'NONE':
+
+
+                log_message = datetime.datetime.now() + message
+                Logs_Write(log_filePath, str(log_message))
+
+
+
+
+def log_always(message: str, Logs: bool = False, log_filePath:str = 'NONE') -> None:
     LSP_SERVER.show_message_log(message, MessageType.Info)
     if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["always"]:
         LSP_SERVER.show_message(message, MessageType.Info)
+
+
+        if Logs != False and Logs != 'NONE':
+
+                log_message = datetime.datetime.now() + message
+                Logs_Write(log_filePath, str(log_message))
+
+
 
 
 ###
