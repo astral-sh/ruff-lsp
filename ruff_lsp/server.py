@@ -1014,7 +1014,7 @@ def log_error(message: str, Logs: bool = False, log_filePath:str = 'NONE') -> No
 
         if Logs != False and Logs != 'NONE':
 
-            log_message = datetime.datetime.now() + message 
+            log_message = "[LOG ERROR]" + datetime.datetime.now() + ": "+ message 
             Logs_Write(log_filePath, str(log_message))
 
 11
@@ -1027,7 +1027,7 @@ def log_warning(message: str, Logs: bool = False, log_filePath:str = 'NONE') -> 
         if Logs != False and Logs != 'NONE':
 
 
-                log_message = datetime.datetime.now() + message
+                log_message = "[LOG WARNING]" + datetime.datetime.now() + ": " + message
                 Logs_Write(log_filePath, str(log_message))
 
 
@@ -1041,7 +1041,7 @@ def log_always(message: str, Logs: bool = False, log_filePath:str = 'NONE') -> N
 
         if Logs != False and Logs != 'NONE':
 
-                log_message = datetime.datetime.now() + message
+                log_message = "[LOG_ALWAYS]" + datetime.datetime.now()+ ": " + message
                 Logs_Write(log_filePath, str(log_message))
 
 
