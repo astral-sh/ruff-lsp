@@ -718,7 +718,7 @@ def initialize(params: InitializeParams) -> None:
     )
     log_to_output(
         f"Global settings: "
-        f"{json.dumps(GLOBAL_SETTINGS, indent=4, ensure_ascii=False)}"
+        f"{json.dumps(global_settings, indent=4, ensure_ascii=False)}"
     )
 
     # Preserve any "global" settings.
