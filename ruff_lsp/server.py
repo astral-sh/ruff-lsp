@@ -135,6 +135,7 @@ def _parse_fix(content: Fix | LegacyFix | None) -> Fix | None:
         # Prior to v0.0.260, Ruff returned a single edit.
         legacy_fix = cast(LegacyFix, content)
         return {
+            "applicability": None,
             "message": legacy_fix.get("message"),
             "edits": [
                 {
@@ -147,18 +148,19 @@ def _parse_fix(content: Fix | LegacyFix | None) -> Fix | None:
     else:
         # Since v0.0.260, Ruff returns a list of edits.
         fix = cast(Fix, content)
+
+        # Since v0.0.266, Ruff returns one based column indices
+        if fix.get("applicability") is not None:
+            for edit in fix["edits"]:
+                edit["location"]["column"] = edit["location"]["column"] - 1
+                edit["end_location"]["column"] = edit["end_location"]["column"] - 1
+
         return fix
 
 
 def _parse_output(content: str) -> list[Diagnostic]:
     """Parse Ruff's JSON output."""
     diagnostics: list[Diagnostic] = []
-
-    line_at_1 = True
-    column_at_1 = True
-
-    line_offset = 1 if line_at_1 else 0
-    col_offset = 1 if column_at_1 else 0
 
     # Ruff's output looks like:
     # [
@@ -194,12 +196,12 @@ def _parse_output(content: str) -> list[Diagnostic]:
     # ]
     for check in json.loads(content):
         start = Position(
-            line=max([int(check["location"]["row"]) - line_offset, 0]),
-            character=int(check["location"]["column"]) - col_offset,
+            line=max([int(check["location"]["row"]) - 1, 0]),
+            character=int(check["location"]["column"]) - 1,
         )
         end = Position(
-            line=max([int(check["end_location"]["row"]) - line_offset, 0]),
-            character=int(check["end_location"]["column"]) - col_offset,
+            line=max([int(check["end_location"]["row"]) - 1, 0]),
+            character=int(check["end_location"]["column"]) - 1,
         )
         diagnostic = Diagnostic(
             range=Range(start=start, end=end),
@@ -301,6 +303,7 @@ class Edit(TypedDict):
 class Fix(TypedDict):
     """A fix for a diagnostic, represented as a list of edits."""
 
+    applicability: str | None
     message: str | None
     edits: list[Edit]
 
@@ -513,6 +516,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                         new_line = f"{line}  # noqa: {diagnostic.code}"
                     fix = Fix(
                         message=None,
+                        applicability=None,
                         edits=[
                             Edit(
                                 content=new_line,
