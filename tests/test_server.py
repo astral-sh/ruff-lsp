@@ -65,6 +65,7 @@ class TestServer(unittest.TestCase):
                             "data": {
                                 "fix": {
                                     "message": "Remove unused import: `sys`",
+                                    "applicability": "Unspecified",
                                     "edits": [
                                         {
                                             "content": "",
@@ -148,6 +149,7 @@ class TestServer(unittest.TestCase):
                             "data": {
                                 "fix": {
                                     "message": "Remove unused import: `sys`",
+                                    "applicability": "Unspecified",
                                     "edits": [
                                         {
                                             "content": "",
