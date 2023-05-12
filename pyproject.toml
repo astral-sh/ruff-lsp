@@ -36,7 +36,7 @@ urls = { repository = "https://github.com/charliermarsh/ruff-lsp" }
 dependencies = [
   "pygls>=1.0.1",
   "lsprotocol>=2023.0.0a1",
-  "ruff>=0.0.264",
+  "ruff>=0.0.266",
   "typing_extensions",
 ]
 
