@@ -4,10 +4,15 @@ test harness, so here's a mixture of a unit and an integration test"""
 from pathlib import Path
 from typing import Optional
 
-from lsprotocol.types import WorkspaceEdit
+from lsprotocol.types import (
+    DocumentFormattingParams,
+    FormattingOptions,
+    TextDocumentIdentifier,
+    WorkspaceEdit,
+)
 from pygls.workspace import Workspace
 
-from ruff_lsp.server import TextDocument, apply_format_impl
+from ruff_lsp.server import format_document_impl
 from tests.client import utils
 
 original = """
@@ -35,6 +40,7 @@ class MockLanguageServer:
         return Workspace(str(self.root))
 
     def apply_edit(self, edit: WorkspaceEdit, _label: Optional[str] = None) -> None:
+        """Currently unused, but we keep it around for future tests."""
         self.applied_edits.append(edit)
 
 
@@ -44,16 +50,12 @@ def test_format(tmp_path):
     uri = utils.as_uri(str(test_file))
 
     ls = MockLanguageServer(tmp_path)
-    doc = {
-        "uri": uri,
-        "languageId": "python",
-        "version": 1,
-        "text": original,
-    }
-    docs = (TextDocument(**doc),)
+    dummy_params = DocumentFormattingParams(
+        text_document=TextDocumentIdentifier(uri=uri),
+        options=FormattingOptions(tab_size=4, insert_spaces=True),
+        work_done_token=None,
+    )
     # noinspection PyTypeChecker
-    apply_format_impl(ls, docs)
-    [edit] = ls.applied_edits
-    [change] = edit.document_changes
-    [text_edit] = change.edits
-    assert text_edit.new_text == expected
+    result = format_document_impl(ls, dummy_params)
+    [edit] = result
+    assert edit.new_text == expected

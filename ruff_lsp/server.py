@@ -25,6 +25,7 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_DID_SAVE,
+    TEXT_DOCUMENT_FORMATTING,
     TEXT_DOCUMENT_HOVER,
     AnnotatedTextEdit,
     ClientCapabilities,
@@ -39,6 +40,7 @@ from lsprotocol.types import (
     DidCloseTextDocumentParams,
     DidOpenTextDocumentParams,
     DidSaveTextDocumentParams,
+    DocumentFormattingParams,
     Hover,
     HoverParams,
     InitializeParams,
@@ -59,9 +61,17 @@ from typing_extensions import TypedDict
 from ruff_lsp import __version__, utils
 from ruff_lsp.utils import RunResult
 
-if os.environ.get("RUFF_LSP_DEBUG"):
+logger = logging.getLogger(__name__)
+
+ruff_lsp_debug = bool(os.environ.get("RUFF_LSP_DEBUG", False))
+ruff_beta_internal = bool(os.environ.get("RUFF_BETA_INTERNAL", False))
+
+if ruff_lsp_debug:
     log_file = Path(__file__).parent.parent.joinpath("pygls.log")
     logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)
+    logger.info("RUFF_LSP_DEBUG is active")
+    if ruff_beta_internal:
+        logger.info("RUFF_BETA_INTERNAL is active")
 
 GLOBAL_SETTINGS: dict[str, str] = {}
 WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
@@ -612,23 +622,23 @@ def apply_organize_imports(arguments: tuple[TextDocument]):
 
 if os.environ.get("RUFF_BETA_INTERNAL"):
 
-    @LSP_SERVER.command("ruff.applyFormat")
-    def apply_format(ls: server.LanguageServer, arguments: tuple[TextDocument]):
-        apply_format_impl(ls, arguments)
+    @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
+    def format_document(
+        ls: server.LanguageServer, arguments: DocumentFormattingParams
+    ) -> list[TextEdit] | None:
+        return format_document_impl(ls, arguments)
 
 
-def apply_format_impl(ls: server.LanguageServer, arguments: tuple[TextDocument]):
-    uri = arguments[0]["uri"]
+def format_document_impl(
+    ls: server.LanguageServer, arguments: DocumentFormattingParams
+) -> list[TextEdit] | None:
+    uri = arguments.text_document.uri
     document = ls.workspace.get_document(uri)
     log_to_output(f"Formatting {uri}")
     result = _run_subcommand_on_document(
         document, args=["format", "-"], source=document.source
     )
-    edits = _result_to_edits(document, result)
-    ls.apply_edit(
-        _create_workspace_edits(document, edits),
-        "Ruff: Format code",
-    )
+    return _result_to_edits(document, result)
 
 
 def _fix_helper(
@@ -794,6 +804,11 @@ def initialize(params: InitializeParams) -> None:
     CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE] = _supports_code_action_resolve(
         params.capabilities
     )
+
+    # Internal hidden beta feature. We want to have this in the code base, but we
+    # don't want to expose it to users yet, hence the environment variable. You can
+    # e.g. use this with VS Code by doing `RUFF_BETA_INTERNAL=1 code .`
+    # CLIENT_CAPABILITIES[TEXT_DOCUMENT_FORMATTING] = ruff_beta_internal
 
     # Extract `settings` from the initialization options.
     workspace_settings = (params.initialization_options or {}).get(  # type: ignore
