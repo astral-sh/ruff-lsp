@@ -624,16 +624,16 @@ if os.environ.get("RUFF_BETA_INTERNAL"):
 
     @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
     def format_document(
-        ls: server.LanguageServer, arguments: DocumentFormattingParams
+        language_server: server.LanguageServer, arguments: DocumentFormattingParams
     ) -> list[TextEdit] | None:
-        return format_document_impl(ls, arguments)
+        return format_document_impl(language_server, arguments)
 
 
 def format_document_impl(
-    ls: server.LanguageServer, arguments: DocumentFormattingParams
+    language_server: server.LanguageServer, arguments: DocumentFormattingParams
 ) -> list[TextEdit] | None:
     uri = arguments.text_document.uri
-    document = ls.workspace.get_document(uri)
+    document = language_server.workspace.get_document(uri)
     log_to_output(f"Formatting {uri}")
     result = _run_subcommand_on_document(
         document, args=["format", "-"], source=document.source

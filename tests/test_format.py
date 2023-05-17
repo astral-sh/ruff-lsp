@@ -49,13 +49,13 @@ def test_format(tmp_path):
     test_file.write_text(original)
     uri = utils.as_uri(str(test_file))
 
-    ls = MockLanguageServer(tmp_path)
+    language_server = MockLanguageServer(tmp_path)
     dummy_params = DocumentFormattingParams(
         text_document=TextDocumentIdentifier(uri=uri),
         options=FormattingOptions(tab_size=4, insert_spaces=True),
         work_done_token=None,
     )
     # noinspection PyTypeChecker
-    result = format_document_impl(ls, dummy_params)
+    result = format_document_impl(language_server, dummy_params)
     [edit] = result
     assert edit.new_text == expected
