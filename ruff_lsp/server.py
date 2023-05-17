@@ -185,16 +185,19 @@ def _parse_output(content: str) -> list[Diagnostic]:
     #       "column": 6
     #     },
     #     "fix": {
-    #       "message": "Remove unused variable",
+    #       "applicability": "Unspecified",
+    #       "message": "Remove assignment to unused variable `x`",
     #       "edits": [
-    #         "content: "",
-    #         "location": {
-    #           "row": 2,
-    #           "column: 5
-    #         },
-    #         "end_location": {
-    #           "row": 3,
-    #           "column: 0
+    #         {
+    #           "content": "",
+    #           "location": {
+    #             "row": 2,
+    #             "column": 1
+    #           },
+    #           "end_location": {
+    #             "row": 3,
+    #             "column": 1
+    #           }
     #         }
     #       ]
     #     },
@@ -203,6 +206,13 @@ def _parse_output(content: str) -> list[Diagnostic]:
     #   },
     #   ...
     # ]
+    #
+    # Input:
+    # ```python
+    # def a():
+    #     x = 0
+    #     print()
+    # ```
     for check in json.loads(content):
         start = Position(
             line=max([int(check["location"]["row"]) - 1, 0]),
