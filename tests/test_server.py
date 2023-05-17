@@ -8,6 +8,7 @@ from threading import Event
 
 from tests.client import defaults, session, utils
 
+# Increase this if you want to attach a debugger
 TIMEOUT_SECONDS = 10
 
 CONTENTS = """import sys
@@ -55,48 +56,47 @@ class TestServer(unittest.TestCase):
                 done.wait(TIMEOUT_SECONDS)
 
                 expected = {
-                    "uri": uri,
                     "diagnostics": [
                         {
-                            "range": {
-                                "start": {"line": 0, "character": 7},
-                                "end": {"line": 0, "character": 10},
-                            },
+                            "code": "F401",
                             "data": {
                                 "fix": {
-                                    "message": "Remove unused import: `sys`",
                                     "applicability": "Unspecified",
                                     "edits": [
                                         {
                                             "content": "",
-                                            "location": {"row": 1, "column": 0},
-                                            "end_location": {"row": 2, "column": 0},
+                                            "end_location": {"column": 0, "row": 2},
+                                            "location": {"column": 0, "row": 1},
                                         }
                                     ],
+                                    "message": "Remove unused import: `sys`",
                                 },
                                 "noqa_row": 1,
                             },
                             "message": "`sys` imported but unused",
+                            "range": {
+                                "end": {"character": 10, "line": 0},
+                                "start": {"character": 7, "line": 0},
+                            },
                             "severity": 2,
-                            "code": "F401",
                             "source": "Ruff",
                             "tags": [1],
                         },
                         {
-                            "range": {
-                                "start": {"line": 2, "character": 6},
-                                "end": {"line": 2, "character": 7},
-                            },
+                            "code": "F821",
                             "data": {"fix": None, "noqa_row": 3},
                             "message": "Undefined name `x`",
+                            "range": {
+                                "end": {"character": 7, "line": 2},
+                                "start": {"character": 6, "line": 2},
+                            },
                             "severity": 1,
-                            "code": "F821",
                             "source": "Ruff",
                         },
                     ],
+                    "uri": uri,
                 }
-
-            self.assertEqual(actual, expected)
+            self.assertEqual(expected, actual)
 
     def test_no_initialization_options(self):
         with tempfile.NamedTemporaryFile(suffix=".py") as fp:
@@ -139,45 +139,44 @@ class TestServer(unittest.TestCase):
                 done.wait(TIMEOUT_SECONDS)
 
                 expected = {
-                    "uri": uri,
                     "diagnostics": [
                         {
-                            "range": {
-                                "start": {"line": 0, "character": 7},
-                                "end": {"line": 0, "character": 10},
-                            },
+                            "code": "F401",
                             "data": {
                                 "fix": {
-                                    "message": "Remove unused import: `sys`",
                                     "applicability": "Unspecified",
                                     "edits": [
                                         {
                                             "content": "",
-                                            "location": {"row": 1, "column": 0},
-                                            "end_location": {"row": 2, "column": 0},
+                                            "end_location": {"column": 0, "row": 2},
+                                            "location": {"column": 0, "row": 1},
                                         }
                                     ],
+                                    "message": "Remove unused import: `sys`",
                                 },
                                 "noqa_row": 1,
                             },
                             "message": "`sys` imported but unused",
+                            "range": {
+                                "end": {"character": 10, "line": 0},
+                                "start": {"character": 7, "line": 0},
+                            },
                             "severity": 2,
-                            "code": "F401",
                             "source": "Ruff",
                             "tags": [1],
                         },
                         {
-                            "range": {
-                                "start": {"line": 2, "character": 6},
-                                "end": {"line": 2, "character": 7},
-                            },
+                            "code": "F821",
                             "data": {"fix": None, "noqa_row": 3},
                             "message": "Undefined name `x`",
+                            "range": {
+                                "end": {"character": 7, "line": 2},
+                                "start": {"character": 6, "line": 2},
+                            },
                             "severity": 1,
-                            "code": "F821",
                             "source": "Ruff",
                         },
                     ],
+                    "uri": uri,
                 }
-
-            self.assertEqual(actual, expected)
+            self.assertEqual(expected, actual)

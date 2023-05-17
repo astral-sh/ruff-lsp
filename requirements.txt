@@ -13,21 +13,24 @@ cattrs==22.2.0
 exceptiongroup==1.1.1
     # via cattrs
 importlib-metadata==6.6.0
-    # via attrs
+    # via
+    #   attrs
+    #   typeguard
 lsprotocol==2023.0.0a1
     # via
     #   pygls
     #   ruff-lsp (pyproject.toml)
-pygls==1.0.1
+pygls==1.0.2
     # via ruff-lsp (pyproject.toml)
 ruff==0.0.267
     # via ruff-lsp (pyproject.toml)
-typeguard==2.13.3
+typeguard==3.0.2
     # via pygls
 typing-extensions==4.5.0
     # via
     #   cattrs
     #   importlib-metadata
     #   ruff-lsp (pyproject.toml)
+    #   typeguard
 zipp==3.15.0
     # via importlib-metadata

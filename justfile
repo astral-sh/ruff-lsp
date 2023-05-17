@@ -18,4 +18,4 @@ check:
   mypy ./ruff_lsp ./tests
 
 test:
-  python -m unittest
+  pytest
