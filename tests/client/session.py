@@ -31,11 +31,11 @@ class LspSession(MethodDispatcher):
         self.cwd = cwd
         self.module = module
 
+        self._endpoint: Endpoint
         self._thread_pool: ThreadPoolExecutor = ThreadPoolExecutor()
         self._sub: subprocess.Popen | None = None
         self._reader: JsonRpcStreamReader | None = None
         self._writer: JsonRpcStreamWriter | None = None
-        self._endpoint: Endpoint | None = None
         self._notification_callbacks: dict[str, Callable] = {}
 
     def __enter__(self):

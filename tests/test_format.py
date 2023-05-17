@@ -1,8 +1,9 @@
 """Unfortunately, I couldn't figure out how to integrate custom commands with the LSP
 test harness, so here's a mixture of a unit and an integration test"""
 
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Optional
 
 from lsprotocol.types import (
     DocumentFormattingParams,
@@ -30,7 +31,7 @@ print("b")
 
 class MockLanguageServer:
     root: Path
-    applied_edits = []
+    applied_edits: list[WorkspaceEdit] = []
 
     def __init__(self, root):
         self.root = root
@@ -39,7 +40,7 @@ class MockLanguageServer:
     def workspace(self) -> Workspace:
         return Workspace(str(self.root))
 
-    def apply_edit(self, edit: WorkspaceEdit, _label: Optional[str] = None) -> None:
+    def apply_edit(self, edit: WorkspaceEdit, _label: str | None = None) -> None:
         """Currently unused, but we keep it around for future tests."""
         self.applied_edits.append(edit)
 
@@ -49,13 +50,13 @@ def test_format(tmp_path):
     test_file.write_text(original)
     uri = utils.as_uri(str(test_file))
 
-    language_server = MockLanguageServer(tmp_path)
+    mock_language_server = MockLanguageServer(tmp_path)
     dummy_params = DocumentFormattingParams(
         text_document=TextDocumentIdentifier(uri=uri),
         options=FormattingOptions(tab_size=4, insert_spaces=True),
         work_done_token=None,
     )
     # noinspection PyTypeChecker
-    result = format_document_impl(language_server, dummy_params)
+    result = format_document_impl(mock_language_server, dummy_params)  # type: ignore
     [edit] = result
     assert edit.new_text == expected

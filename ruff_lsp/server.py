@@ -631,7 +631,7 @@ if os.environ.get("RUFF_BETA_INTERNAL"):
 
 def format_document_impl(
     language_server: server.LanguageServer, arguments: DocumentFormattingParams
-) -> list[TextEdit] | None:
+) -> list[TextEdit]:
     uri = arguments.text_document.uri
     document = language_server.workspace.get_document(uri)
     log_to_output(f"Formatting {uri}")
@@ -645,7 +645,7 @@ def _fix_helper(
     document: workspace.Document,
     *,
     only: str | None = None,
-) -> list[TextEdit] | None:
+) -> list[TextEdit]:
     result = _run_tool_on_document(
         document,
         use_stdin=True,
@@ -773,7 +773,7 @@ def run_path(
         ) as process:
             result = RunResult(*process.communicate(input=source))
     else:
-        result = subprocess.run(
+        out = subprocess.run(
             argv,
             encoding="utf-8",
             capture_output=True,
@@ -782,7 +782,7 @@ def run_path(
             # Prevent hanging on stdin
             stdin=subprocess.DEVNULL,
         )
-        result = RunResult(result.stdout, result.stderr)
+        result = RunResult(out.stdout, out.stderr)
 
     end = time.time()
     log_to_output(f"Running ruff finished in {end - start:.3f}s")
