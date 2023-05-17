@@ -1,4 +1,4 @@
-pygls.log
+ruff-lsp.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

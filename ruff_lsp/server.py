@@ -67,7 +67,7 @@ ruff_lsp_debug = bool(os.environ.get("RUFF_LSP_DEBUG", False))
 ruff_beta_internal = bool(os.environ.get("RUFF_BETA_INTERNAL", False))
 
 if ruff_lsp_debug:
-    log_file = Path(__file__).parent.parent.joinpath("pygls.log")
+    log_file = Path(__file__).parent.parent.joinpath("ruff-lsp.log")
     logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)
     logger.info("RUFF_LSP_DEBUG is active")
     if ruff_beta_internal:
