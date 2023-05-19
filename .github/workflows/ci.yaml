@@ -22,22 +22,8 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
       - name: Install dependencies
         run: just install
-      # We need the format feature of ruff, which isn't on pypi. We also can't build with pip since we have to set the
-      # features argument
-      - name: Build ruff with format feature
-        shell: bash
-        run: |
-          pip uninstall -y ruff
-          git clone --depth 1 https://github.com/charliermarsh/ruff
-          cd ruff
-          maturin_version=$(grep "requires = " pyproject.toml | sed -E 's/(requires = \[")|("\])//g')
-          pip install ${maturin_version}
-          maturin build --features format
-          pip install maturin --find-links target/wheels
       - name: Run checks
         run: just check
       - name: Run tests
