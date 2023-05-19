@@ -22,7 +22,7 @@ lsprotocol==2023.0.0a1
     #   ruff-lsp (pyproject.toml)
 pygls==1.0.2
     # via ruff-lsp (pyproject.toml)
-ruff==0.0.267
+ruff==0.0.269
     # via ruff-lsp (pyproject.toml)
 typeguard==3.0.2
     # via pygls
