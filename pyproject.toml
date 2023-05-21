@@ -32,7 +32,7 @@ classifiers = [
   "Topic :: Software Development :: Testing",
   "Topic :: Utilities",
 ]
-urls = { repository = "https://github.com/charliermarsh/ruff-lsp" }
+urls = { repository = "https://github.com/astral-sh/ruff-lsp" }
 dependencies = [
   "pygls>=1.0.1",
   "lsprotocol>=2023.0.0a1",
