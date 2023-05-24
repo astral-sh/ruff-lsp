@@ -77,7 +77,7 @@ typed-ast==1.5.4
     #   mypy
 typeguard==4.0.0
     # via pygls
-typing-extensions==4.6.0
+typing-extensions==4.6.1
     # via
     #   black
     #   cattrs
