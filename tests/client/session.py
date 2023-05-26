@@ -7,7 +7,7 @@ import subprocess
 import sys
 from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Event
-from typing import Any, Callable
+from typing import Callable
 
 from pylsp_jsonrpc.dispatchers import MethodDispatcher
 from pylsp_jsonrpc.endpoint import Endpoint
@@ -31,11 +31,11 @@ class LspSession(MethodDispatcher):
         self.cwd = cwd
         self.module = module
 
+        self._endpoint: Endpoint
         self._thread_pool: ThreadPoolExecutor = ThreadPoolExecutor()
         self._sub: subprocess.Popen | None = None
         self._reader: JsonRpcStreamReader | None = None
         self._writer: JsonRpcStreamWriter | None = None
-        self._endpoint: Any = None
         self._notification_callbacks: dict[str, Callable] = {}
 
     def __enter__(self):

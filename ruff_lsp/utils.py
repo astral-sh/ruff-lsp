@@ -7,7 +7,7 @@ import os.path
 import site
 import subprocess
 import sys
-from typing import Any, Sequence
+from typing import Any
 
 
 def as_list(content: Any | list[Any] | tuple[Any, ...]) -> list[Any]:
@@ -68,31 +68,3 @@ class RunResult:
     def __init__(self, stdout: str, stderr: str):
         self.stdout: str = stdout
         self.stderr: str = stderr
-
-
-def run_path(
-    argv: Sequence[str],
-    use_stdin: bool,
-    cwd: str | None = None,
-    source: str | None = None,
-) -> RunResult:
-    """Runs as an executable."""
-    if use_stdin:
-        with subprocess.Popen(
-            argv,
-            encoding="utf-8",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=subprocess.PIPE,
-            cwd=cwd,
-        ) as process:
-            return RunResult(*process.communicate(input=source))
-    else:
-        result = subprocess.run(
-            argv,
-            encoding="utf-8",
-            capture_output=True,
-            check=False,
-            cwd=cwd,
-        )
-        return RunResult(result.stdout, result.stderr)

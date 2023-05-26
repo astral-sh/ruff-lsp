@@ -171,10 +171,10 @@ the following settings are supported:
 
 - Install [`just`](https://github.com/casey/just), or see the `justfile` for corresponding commands.
 - Create and activate a virtual environment (e.g., `python -m venv .venv && source .venv/bin/activate`).
-- Install development dependencies (`just install`).
+- Install development dependencies (`just install`). To run the `test_format.py` test, you need to install a custom ruff build with `--features format`, e.g. `maturin develop --features format -m ../ruff/crates/ruff_cli/Cargo.toml`.
 - To automatically format the codebase, run: `just fmt`.
 - To run lint and type checks, run: `just check`.
-- To run tests, run: `just test`.
+- To run tests, run: `just test`. This is just a wrapper around pytest, which you can use as usual.
 
 ## License
 

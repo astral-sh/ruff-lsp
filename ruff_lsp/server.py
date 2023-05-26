@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 import os
-import pathlib
+import os.path
 import platform
 import re
 import shutil
+import subprocess
 import sys
 import sysconfig
+import time
+from pathlib import Path
 from typing import Any, Sequence, cast
 
 from lsprotocol.types import (
@@ -21,6 +25,7 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_DID_SAVE,
+    TEXT_DOCUMENT_FORMATTING,
     TEXT_DOCUMENT_HOVER,
     AnnotatedTextEdit,
     ClientCapabilities,
@@ -35,6 +40,7 @@ from lsprotocol.types import (
     DidCloseTextDocumentParams,
     DidOpenTextDocumentParams,
     DidSaveTextDocumentParams,
+    DocumentFormattingParams,
     Hover,
     HoverParams,
     InitializeParams,
@@ -53,6 +59,19 @@ from pygls import protocol, server, uris, workspace
 from typing_extensions import TypedDict
 
 from ruff_lsp import __version__, utils
+from ruff_lsp.utils import RunResult
+
+logger = logging.getLogger(__name__)
+
+ruff_lsp_debug = bool(os.environ.get("RUFF_LSP_DEBUG", False))
+ruff_beta_internal = bool(os.environ.get("RUFF_BETA_INTERNAL", False))
+
+if ruff_lsp_debug:
+    log_file = Path(__file__).parent.parent.joinpath("ruff-lsp.log")
+    logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)
+    logger.info("RUFF_LSP_DEBUG is active")
+    if ruff_beta_internal:
+        logger.info("RUFF_BETA_INTERNAL is active")
 
 GLOBAL_SETTINGS: dict[str, str] = {}
 WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
@@ -176,16 +195,19 @@ def _parse_output(content: str) -> list[Diagnostic]:
     #       "column": 6
     #     },
     #     "fix": {
-    #       "message": "Remove unused variable",
+    #       "applicability": "Unspecified",
+    #       "message": "Remove assignment to unused variable `x`",
     #       "edits": [
-    #         "content: "",
-    #         "location": {
-    #           "row": 2,
-    #           "column: 5
-    #         },
-    #         "end_location": {
-    #           "row": 3,
-    #           "column: 0
+    #         {
+    #           "content": "",
+    #           "location": {
+    #             "row": 2,
+    #             "column": 1
+    #           },
+    #           "end_location": {
+    #             "row": 3,
+    #             "column": 1
+    #           }
     #         }
     #       ]
     #     },
@@ -194,6 +216,13 @@ def _parse_output(content: str) -> list[Diagnostic]:
     #   },
     #   ...
     # ]
+    #
+    # Input:
+    # ```python
+    # def a():
+    #     x = 0
+    #     print()
+    # ```
     for check in json.loads(content):
         start = Position(
             line=max([int(check["location"]["row"]) - 1, 0]),
@@ -361,8 +390,8 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 and len(params.context.only) == 1
                 and kind in params.context.only
             ):
-                results = _formatting_helper(document, only="I001")
-                if results is not None:
+                results = _fix_helper(document, only="I001")
+                if results:
                     return [
                         CodeAction(
                             title="Ruff: Organize Imports",
@@ -386,8 +415,8 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 and len(params.context.only) == 1
                 and kind in params.context.only
             ):
-                results = _formatting_helper(document)
-                if results is not None:
+                results = _fix_helper(document)
+                if results:
                     return [
                         CodeAction(
                             title="Ruff: Fix All",
@@ -424,8 +453,8 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     ),
                 )
             else:
-                results = _formatting_helper(document, only="I001")
-                if results is not None:
+                results = _fix_helper(document, only="I001")
+                if results:
                     actions.append(
                         CodeAction(
                             title="Ruff: Organize Imports",
@@ -452,8 +481,8 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     ),
                 )
             else:
-                results = _formatting_helper(document)
-                if results is not None:
+                results = _fix_helper(document)
+                if results:
                     actions.append(
                         CodeAction(
                             title="Ruff: Fix All",
@@ -559,16 +588,14 @@ def resolve_code_action(params: CodeAction) -> CodeAction:
     ):
         # Generate the "Ruff: Organize Imports" edit
         params.edit = _create_workspace_edits(
-            document, _formatting_helper(document, only="I001") or []
+            document, _fix_helper(document, only="I001")
         )
     elif settings["fixAll"] and params.kind in (
         CodeActionKind.SourceFixAll,
         f"{CodeActionKind.SourceFixAll}.ruff",
     ):
         # Generate the "Ruff: Fix All" edit.
-        params.edit = _create_workspace_edits(
-            document, _formatting_helper(document) or []
-        )
+        params.edit = _create_workspace_edits(document, _fix_helper(document))
 
     return params
 
@@ -578,7 +605,7 @@ def apply_autofix(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     text_document = LSP_SERVER.workspace.get_document(uri)
     LSP_SERVER.apply_edit(
-        _create_workspace_edits(text_document, _formatting_helper(text_document) or []),
+        _create_workspace_edits(text_document, _fix_helper(text_document)),
         "Ruff: Fix all auto-fixable problems",
     )
 
@@ -588,46 +615,76 @@ def apply_organize_imports(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     text_document = LSP_SERVER.workspace.get_document(uri)
     LSP_SERVER.apply_edit(
-        _create_workspace_edits(
-            text_document, _formatting_helper(text_document, only="I001") or []
-        ),
+        _create_workspace_edits(text_document, _fix_helper(text_document, only="I001")),
         "Ruff: Format imports",
     )
 
 
-def _formatting_helper(
-    document: workspace.Document, *, only: str | None = None
-) -> list[TextEdit] | None:
+if os.environ.get("RUFF_BETA_INTERNAL"):
+
+    @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
+    def format_document(
+        language_server: server.LanguageServer, arguments: DocumentFormattingParams
+    ) -> list[TextEdit] | None:
+        return format_document_impl(language_server, arguments)
+
+
+def format_document_impl(
+    language_server: server.LanguageServer, arguments: DocumentFormattingParams
+) -> list[TextEdit]:
+    uri = arguments.text_document.uri
+    document = language_server.workspace.get_document(uri)
+    log_to_output(f"Formatting {uri}")
+    result = _run_subcommand_on_document(
+        document, args=["format", "-"], source=document.source
+    )
+    return _result_to_edits(document, result)
+
+
+def _fix_helper(
+    document: workspace.Document,
+    *,
+    only: str | None = None,
+) -> list[TextEdit]:
     result = _run_tool_on_document(
         document,
         use_stdin=True,
         extra_args=["--fix"],
         only=only,
     )
+    return _result_to_edits(document, result)
+
+
+def _result_to_edits(
+    document: workspace.Document, result: RunResult | None
+) -> list[TextEdit]:
     if result is None:
         return []
 
-    if result.stdout:
-        new_source = _match_line_endings(document, result.stdout)
+    if not result.stdout:
+        return []
 
-        # Skip last line ending in a notebook cell.
-        if document.uri.startswith("vscode-notebook-cell"):
-            if new_source.endswith("\r\n"):
-                new_source = new_source[:-2]
-            elif new_source.endswith("\n"):
-                new_source = new_source[:-1]
+    new_source = _match_line_endings(document, result.stdout)
 
-        if new_source != document.source:
-            return [
-                TextEdit(
-                    range=Range(
-                        start=Position(line=0, character=0),
-                        end=Position(line=len(document.lines), character=0),
-                    ),
-                    new_text=new_source,
-                )
-            ]
-    return None
+    # Skip last line ending in a notebook cell.
+    if document.uri.startswith("vscode-notebook-cell"):
+        if new_source.endswith("\r\n"):
+            new_source = new_source[:-2]
+        elif new_source.endswith("\n"):
+            new_source = new_source[:-1]
+
+    if new_source == document.source:
+        return []
+
+    return [
+        TextEdit(
+            range=Range(
+                start=Position(line=0, character=0),
+                end=Position(line=len(document.lines), character=0),
+            ),
+            new_text=new_source,
+        )
+    ]
 
 
 def _create_workspace_edits(
@@ -695,6 +752,46 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
     return text.replace(actual, expected)
 
 
+def run_path(
+    argv: Sequence[str],
+    use_stdin: bool,
+    cwd: str | None = None,
+    source: str | None = None,
+) -> RunResult:
+    """Runs as an executable."""
+    log_to_output(f"Running Ruff with: {argv}")
+    start = time.time()
+
+    if use_stdin:
+        with subprocess.Popen(
+            argv,
+            encoding="utf-8",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            cwd=cwd,
+        ) as process:
+            result = RunResult(*process.communicate(input=source))
+    else:
+        out = subprocess.run(
+            argv,
+            encoding="utf-8",
+            capture_output=True,
+            check=False,
+            cwd=cwd,
+            # Prevent hanging on stdin
+            stdin=subprocess.DEVNULL,
+        )
+        result = RunResult(out.stdout, out.stderr)
+
+    end = time.time()
+    log_to_output(f"Running ruff finished in {end - start:.3f}s")
+    if result.stderr:
+        log_to_output(result.stderr)
+
+    return result
+
+
 ###
 # Lifecycle.
 ###
@@ -707,6 +804,11 @@ def initialize(params: InitializeParams) -> None:
     CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE] = _supports_code_action_resolve(
         params.capabilities
     )
+
+    # Internal hidden beta feature. We want to have this in the code base, but we
+    # don't want to expose it to users yet, hence the environment variable. You can
+    # e.g. use this with VS Code by doing `RUFF_BETA_INTERNAL=1 code .`
+    # CLIENT_CAPABILITIES[TEXT_DOCUMENT_FORMATTING] = ruff_beta_internal
 
     # Extract `settings` from the initialization options.
     workspace_settings = (params.initialization_options or {}).get(  # type: ignore
@@ -820,7 +922,7 @@ def _update_workspace_settings(settings: list[dict[str, Any]]) -> None:
 
 
 def _get_document_key(document: workspace.Document) -> str | None:
-    document_workspace = pathlib.Path(document.path)
+    document_workspace = Path(document.path)
     workspaces = {s["workspaceFS"] for s in WORKSPACE_SETTINGS.values()}
 
     while document_workspace != document_workspace.parent:
@@ -836,7 +938,7 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
 
     key = _get_document_key(document)
     if key is None:
-        workspace_path = os.fspath(pathlib.Path(document.path).parent)
+        workspace_path = os.fspath(Path(document.path).parent)
         return {
             **_default_settings(),
             "cwd": None,
@@ -922,7 +1024,7 @@ def _run_tool_on_document(
     use_stdin: bool = False,
     extra_args: Sequence[str] = [],
     only: str | None = None,
-) -> utils.RunResult | None:
+) -> RunResult | None:
     """Runs tool on the given document.
 
     If `use_stdin` is `True` then contents of the document is passed to the tool via
@@ -955,39 +1057,25 @@ def _run_tool_on_document(
     else:
         argv += [document.path]
 
-    log_to_output(f"Running Ruff with: {argv}")
-    result: utils.RunResult = utils.run_path(
+    return run_path(
         argv=argv,
         use_stdin=use_stdin,
         cwd=settings["cwd"],
-        source=document.source.replace("\r\n", "\n"),
+        source=document.source,
     )
-    if result.stderr:
-        log_to_output(result.stderr)
-
-    return result
 
 
 def _run_subcommand_on_document(
-    document: workspace.Document,
-    args: Sequence[str],
-) -> utils.RunResult:
+    document: workspace.Document, args: Sequence[str], source: str | None = None
+) -> RunResult:
     """Runs the tool subcommand on the given document."""
     # Deep copy, to prevent accidentally updating global settings.
     settings = copy.deepcopy(_get_settings_by_document(document))
 
     argv: list[str] = [_executable_path(settings)] + list(args)
-
-    log_to_output(f"Running Ruff with: {argv}")
-    result: utils.RunResult = utils.run_path(
-        argv=argv,
-        use_stdin=False,
-        cwd=settings["cwd"],
+    return run_path(
+        argv=argv, use_stdin=source is not None, cwd=settings["cwd"], source=source
     )
-    if result.stderr:
-        log_to_output(result.stderr)
-
-    return result
 
 
 ###
