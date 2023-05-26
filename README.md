@@ -7,7 +7,7 @@ tool, written in Rust.
 Enables Ruff to be used in any editor that supports the LSP, including [Neovim](#example-neovim),
 [Sublime Text](#example-sublime-text), Emacs and more.
 
-For Visual Studio Code, check out the [Ruff VS Code extension](https://github.com/charliermarsh/ruff-vscode).
+For Visual Studio Code, check out the [Ruff VS Code extension](https://github.com/astral-sh/ruff-vscode).
 
 ## Highlights
 
