@@ -8,7 +8,7 @@ attrs==23.1.0
     # via
     #   cattrs
     #   lsprotocol
-black==22.12.0
+black==23.3.0
     # via ruff-lsp (pyproject.toml)
 build==0.10.0
     # via pip-tools
@@ -62,7 +62,7 @@ pytest==7.3.1
     # via ruff-lsp (pyproject.toml)
 python-lsp-jsonrpc==1.0.0
     # via ruff-lsp (pyproject.toml)
-ruff==0.0.267
+ruff==0.0.270
     # via ruff-lsp (pyproject.toml)
 tomli==2.0.1
     # via
@@ -75,9 +75,9 @@ typed-ast==1.5.4
     # via
     #   black
     #   mypy
-typeguard==3.0.2
+typeguard==4.0.0
     # via pygls
-typing-extensions==4.5.0
+typing-extensions==4.6.2
     # via
     #   black
     #   cattrs
