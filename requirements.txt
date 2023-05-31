@@ -8,7 +8,7 @@ attrs==23.1.0
     # via
     #   cattrs
     #   lsprotocol
-cattrs==22.2.0
+cattrs==23.1.1
     # via lsprotocol
 exceptiongroup==1.1.1
     # via cattrs
