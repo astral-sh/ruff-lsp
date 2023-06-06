@@ -305,7 +305,7 @@ class Fix(TypedDict):
     edits: list[Edit]
 
 
-class DiagnosticData(TypedDict):
+class DiagnosticData(TypedDict, total=False):
     fix: Fix | None
     noqa_row: int | None
 
