@@ -395,7 +395,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                                 diagnostic
                                 for diagnostic in params.context.diagnostics
                                 if diagnostic.source == "Ruff"
-                                and cast(DiagnosticData, diagnostic.data)["fix"]
+                                and cast(DiagnosticData, diagnostic.data).get("fix")
                                 is not None
                             ],
                         ),
@@ -461,7 +461,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                                 diagnostic
                                 for diagnostic in params.context.diagnostics
                                 if diagnostic.source == "Ruff"
-                                and cast(DiagnosticData, diagnostic.data)["fix"]
+                                and cast(DiagnosticData, diagnostic.data).get("fix")
                                 is not None
                             ],
                         ),
@@ -471,7 +471,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     if not params.context.only or CodeActionKind.QuickFix in params.context.only:
         for diagnostic in params.context.diagnostics:
             if diagnostic.source == "Ruff":
-                fix = cast(DiagnosticData, diagnostic.data)["fix"]
+                fix = cast(DiagnosticData, diagnostic.data).get("fix")
                 if fix is not None:
                     title: str
                     if fix.get("message"):
@@ -495,7 +495,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     if not params.context.only or CodeActionKind.QuickFix in params.context.only:
         for diagnostic in params.context.diagnostics:
             if diagnostic.source == "Ruff":
-                noqa_row = cast(DiagnosticData, diagnostic.data)["noqa_row"]
+                noqa_row = cast(DiagnosticData, diagnostic.data).get("noqa_row")
                 if noqa_row is not None:
                     line = document.lines[noqa_row - 1].rstrip("\r\n")
                     match = NOQA_REGEX.search(line)
