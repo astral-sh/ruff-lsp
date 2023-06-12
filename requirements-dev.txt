@@ -86,7 +86,7 @@ typing-extensions==4.6.3
     #   platformdirs
     #   ruff-lsp (pyproject.toml)
     #   typeguard
-ujson==5.7.0
+ujson==5.8.0
     # via python-lsp-jsonrpc
 wheel==0.40.0
     # via pip-tools
