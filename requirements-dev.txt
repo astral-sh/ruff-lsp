@@ -44,6 +44,7 @@ mypy-extensions==1.0.0
     #   mypy
 packaging==23.1
     # via
+    #   black
     #   build
     #   pytest
 pathspec==0.11.1
@@ -62,7 +63,7 @@ pytest==7.3.2
     # via ruff-lsp (pyproject.toml)
 python-lsp-jsonrpc==1.0.0
     # via ruff-lsp (pyproject.toml)
-ruff==0.0.270
+ruff==0.0.272
     # via ruff-lsp (pyproject.toml)
 tomli==2.0.1
     # via
@@ -75,7 +76,7 @@ typed-ast==1.5.4
     # via
     #   black
     #   mypy
-typeguard==4.0.0
+typeguard==3.0.2
     # via pygls
 typing-extensions==4.6.3
     # via

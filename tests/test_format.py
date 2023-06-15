@@ -1,6 +1,3 @@
-"""Unfortunately, I couldn't figure out how to integrate custom commands with the LSP
-test harness, so here's a mixture of a unit and an integration test"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -17,15 +14,10 @@ from ruff_lsp.server import format_document_impl
 from tests.client import utils
 
 original = """
-print("a")
-# DEL
-print("b")
+x = 1
 """
 
-expected = """
-print("a")
-
-print("b")
+expected = """NOT_YET_IMPLEMENTED_StmtAssign
 """
 
 
