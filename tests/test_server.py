@@ -61,7 +61,7 @@ class TestServer(unittest.TestCase):
                             "code": "F401",
                             "data": {
                                 "fix": {
-                                    "applicability": "Unspecified",
+                                    "applicability": "Automatic",
                                     "edits": [
                                         {
                                             "content": "",
@@ -144,7 +144,7 @@ class TestServer(unittest.TestCase):
                             "code": "F401",
                             "data": {
                                 "fix": {
-                                    "applicability": "Unspecified",
+                                    "applicability": "Automatic",
                                     "edits": [
                                         {
                                             "content": "",
