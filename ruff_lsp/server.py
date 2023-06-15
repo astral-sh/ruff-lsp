@@ -636,7 +636,9 @@ def format_document_impl(
     document = language_server.workspace.get_document(uri)
     log_to_output(f"Formatting {uri}")
     result = _run_subcommand_on_document(
-        document, args=["format", "-"], source=document.source
+        document,
+        args=["format", "-"],
+        source=document.source.replace("\r\n", "\n"),
     )
     return _result_to_edits(document, result)
 
@@ -1061,7 +1063,7 @@ def _run_tool_on_document(
         argv=argv,
         use_stdin=use_stdin,
         cwd=settings["cwd"],
-        source=document.source,
+        source=document.source.replace("\r\n", "\n"),
     )
 
 
