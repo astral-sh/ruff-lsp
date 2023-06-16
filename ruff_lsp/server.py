@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import json
 import logging
 import os
@@ -367,12 +366,11 @@ class LegacyFix(TypedDict):
         resolve_provider=True,
     ),
 )
-def code_action(params: CodeActionParams) -> list[CodeAction] | None:
+async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     """LSP handler for textDocument/codeAction request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
 
-    # Deep copy, to prevent accidentally updating global settings.
-    settings = copy.deepcopy(_get_settings_by_document(document))
+    settings = _get_settings_by_document(document)
 
     if utils.is_stdlib_file(document.path):
         # Don't format standard library files.
@@ -579,8 +577,7 @@ def resolve_code_action(params: CodeAction) -> CodeAction:
     """LSP handler for codeAction/resolve request."""
     document = LSP_SERVER.workspace.get_document(cast(str, params.data))
 
-    # Deep copy, to prevent accidentally updating global settings.
-    settings = copy.deepcopy(_get_settings_by_document(document))
+    settings = _get_settings_by_document(document)
 
     if settings["organizeImports"] and params.kind in (
         CodeActionKind.SourceOrganizeImports,
@@ -1038,8 +1035,7 @@ def _run_tool_on_document(
         log_warning(f"Skipping standard library file: {document.path}")
         return None
 
-    # Deep copy, to prevent accidentally updating global settings.
-    settings = copy.deepcopy(_get_settings_by_document(document))
+    settings = _get_settings_by_document(document)
 
     executable = _executable_path(settings)
     argv: list[str] = [executable] + TOOL_ARGS + settings["args"] + list(extra_args)
@@ -1069,8 +1065,7 @@ def _run_subcommand_on_document(
     document: workspace.Document, args: Sequence[str], source: str | None = None
 ) -> RunResult:
     """Runs the tool subcommand on the given document."""
-    # Deep copy, to prevent accidentally updating global settings.
-    settings = copy.deepcopy(_get_settings_by_document(document))
+    settings = _get_settings_by_document(document)
 
     argv: list[str] = [_executable_path(settings)] + list(args)
     return run_path(
