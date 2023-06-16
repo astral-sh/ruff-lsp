@@ -6,12 +6,6 @@
 [![image](https://img.shields.io/pypi/pyversions/ruff-lsp.svg)](https://pypi.python.org/pypi/ruff-lsp)
 [![Actions status](https://github.com/astral-sh/ruff-lsp/workflows/CI/badge.svg)](https://github.com/astral-sh/ruff-lsp/actions)
 
-<div align="center">
-  <a target="_blank" href="https://astral.sh" style="background:none">
-    <img src="https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/svg/Astral.svg">
-  </a>
-</div>
-
 A [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for
 [Ruff](https://github.com/charliermarsh/ruff), an extremely fast Python linter and code transformation
 tool, written in Rust.
