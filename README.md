@@ -164,7 +164,7 @@ The exact mechanism by which settings will be passed to `ruff-lsp` will vary by 
 the following settings are supported:
 
 | Settings         | Default | Description                                                                              |
-|------------------|---------|------------------------------------------------------------------------------------------|
+| ---------------- | ------- | ---------------------------------------------------------------------------------------- |
 | args             | `[]`    | Custom arguments passed to `ruff`. E.g `"args": ["--config=/path/to/pyproject.toml"]`.   |
 | logLevel         | `error` | Sets the tracing level for the extension.                                                |
 | path             | `[]`    | Setting to provide custom `ruff` executables, to try in order. E.g. `["/path/to/ruff"]`. |
