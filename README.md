@@ -158,6 +158,24 @@ Upon successful installation, you should see errors surfaced directly in your ed
 
 ![](https://user-images.githubusercontent.com/1309177/209418462-ae106d1f-dbc3-4d53-bae2-66bfccc3e841.png)
 
+
+### Example: Kate
+
+To use `ruff-lsp` with [Kate](https://kate-editor.org/), add something like the following to
+the LSP client's `settings.json`:
+
+```json
+{
+    "servers": {
+        "python": {
+            "command": ["ruff-lsp"],
+            "url": "https://github.com/charliermarsh/ruff-lsp",
+            "highlightingModeRegex": "^Python$"
+        }
+    }
+}
+```
+
 ## Settings
 
 The exact mechanism by which settings will be passed to `ruff-lsp` will vary by editor. However,
