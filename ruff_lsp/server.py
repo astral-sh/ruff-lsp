@@ -361,8 +361,8 @@ class LegacyFix(TypedDict):
             CodeActionKind.QuickFix,
             CodeActionKind.SourceFixAll,
             CodeActionKind.SourceOrganizeImports,
-            f"{CodeActionKind.SourceFixAll}.ruff",
-            f"{CodeActionKind.SourceOrganizeImports}.ruff",
+            f"{CodeActionKind.SourceFixAll.value}.ruff",
+            f"{CodeActionKind.SourceOrganizeImports.value}.ruff",
         ],
         resolve_provider=True,
     ),
@@ -383,7 +383,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
         # Generate the "Ruff: Organize Imports" edit
         for kind in (
             CodeActionKind.SourceOrganizeImports,
-            f"{CodeActionKind.SourceOrganizeImports}.ruff",
+            f"{CodeActionKind.SourceOrganizeImports.value}.ruff",
         ):
             if (
                 params.context.only
@@ -408,7 +408,7 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
         # Generate the "Ruff: Fix All" edit.
         for kind in (
             CodeActionKind.SourceFixAll,
-            f"{CodeActionKind.SourceFixAll}.ruff",
+            f"{CodeActionKind.SourceFixAll.value}.ruff",
         ):
             if (
                 params.context.only
@@ -584,7 +584,7 @@ def resolve_code_action(params: CodeAction) -> CodeAction:
 
     if settings["organizeImports"] and params.kind in (
         CodeActionKind.SourceOrganizeImports,
-        f"{CodeActionKind.SourceOrganizeImports}.ruff",
+        f"{CodeActionKind.SourceOrganizeImports.value}.ruff",
     ):
         # Generate the "Ruff: Organize Imports" edit
         params.edit = _create_workspace_edits(
@@ -592,7 +592,7 @@ def resolve_code_action(params: CodeAction) -> CodeAction:
         )
     elif settings["fixAll"] and params.kind in (
         CodeActionKind.SourceFixAll,
-        f"{CodeActionKind.SourceFixAll}.ruff",
+        f"{CodeActionKind.SourceFixAll.value}.ruff",
     ):
         # Generate the "Ruff: Fix All" edit.
         params.edit = _create_workspace_edits(document, _fix_helper(document))
@@ -634,7 +634,6 @@ def format_document_impl(
 ) -> list[TextEdit]:
     uri = arguments.text_document.uri
     document = language_server.workspace.get_document(uri)
-    log_to_output(f"Formatting {uri}")
     result = _run_subcommand_on_document(
         document,
         args=["format", "-"],
@@ -787,7 +786,7 @@ def run_path(
         result = RunResult(out.stdout, out.stderr)
 
     end = time.time()
-    log_to_output(f"Running ruff finished in {end - start:.3f}s")
+    log_to_output(f"Ruff finished in: {end - start:.3f}s")
     if result.stderr:
         log_to_output(result.stderr)
 
@@ -992,6 +991,8 @@ def _executable_path(settings: dict[str, Any]) -> str:
     if os.path.exists(path):
         log_to_output(f"Using interpreter executable: {path}")
         return path
+    else:
+        log_to_output(f"Interpreter executable ({path}) not found")
 
     # Second choice: the executable in the global environment.
     environment_path = shutil.which("ruff")
@@ -1001,10 +1002,7 @@ def _executable_path(settings: dict[str, Any]) -> str:
 
     # Third choice: bundled executable.
     if bundle:
-        log_to_output(
-            f"Interpreter executable ({path}) not found; "
-            f"falling back to bundled executable: {bundle}"
-        )
+        log_to_output(f"Falling back to bundled executable: {bundle}")
         return bundle
 
     # Last choice: just return the expected path for the current interpreter.
