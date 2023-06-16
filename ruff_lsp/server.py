@@ -138,7 +138,7 @@ def did_close(params: DidCloseTextDocumentParams) -> None:
 
 
 def _linting_helper(document: workspace.Document) -> list[Diagnostic]:
-    result = _run_tool_on_document(document, use_stdin=True)
+    result = _run_tool_on_document(document)
     if result is None:
         return []
     return _parse_output(result.stdout) if result.stdout else []
@@ -295,7 +295,7 @@ def hover(params: HoverParams) -> Hover | None:
         end += codes_start
         if start <= params.position.character < end:
             code = match.group()
-            result = _run_subcommand_on_document(document, ["--explain", code])
+            result = _run_subcommand_on_document(document, args=["--explain", code])
             if result.stdout:
                 return Hover(
                     contents=MarkupContent(
@@ -631,11 +631,7 @@ def format_document_impl(
 ) -> list[TextEdit]:
     uri = arguments.text_document.uri
     document = language_server.workspace.get_document(uri)
-    result = _run_subcommand_on_document(
-        document,
-        args=["format", "-"],
-        source=document.source.replace("\r\n", "\n"),
-    )
+    result = _run_subcommand_on_document(document, args=["format", "-"])
     return _result_to_edits(document, result)
 
 
@@ -644,12 +640,7 @@ def _fix_helper(
     *,
     only: str | None = None,
 ) -> list[TextEdit]:
-    result = _run_tool_on_document(
-        document,
-        use_stdin=True,
-        extra_args=["--fix"],
-        only=only,
-    )
+    result = _run_tool_on_document(document, extra_args=["--fix"], only=only)
     return _result_to_edits(document, result)
 
 
@@ -752,7 +743,7 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
 
 def run_path(
     argv: Sequence[str],
-    use_stdin: bool,
+    *,
     cwd: str | None = None,
     source: str | None = None,
 ) -> RunResult:
@@ -760,27 +751,15 @@ def run_path(
     log_to_output(f"Running Ruff with: {argv}")
     start = time.time()
 
-    if use_stdin:
-        with subprocess.Popen(
-            argv,
-            encoding="utf-8",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=subprocess.PIPE,
-            cwd=cwd,
-        ) as process:
-            result = RunResult(*process.communicate(input=source))
-    else:
-        out = subprocess.run(
-            argv,
-            encoding="utf-8",
-            capture_output=True,
-            check=False,
-            cwd=cwd,
-            # Prevent hanging on stdin
-            stdin=subprocess.DEVNULL,
-        )
-        result = RunResult(out.stdout, out.stderr)
+    with subprocess.Popen(
+        argv,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+        cwd=cwd,
+    ) as process:
+        result = RunResult(*process.communicate(input=source))
 
     end = time.time()
     log_to_output(f"Ruff finished in: {end - start:.3f}s")
@@ -1018,7 +997,7 @@ def _executable_version(executable: str) -> str:
 
 def _run_tool_on_document(
     document: workspace.Document,
-    use_stdin: bool = False,
+    *,
     extra_args: Sequence[str] = [],
     only: str | None = None,
 ) -> RunResult | None:
@@ -1047,29 +1026,27 @@ def _run_tool_on_document(
             argv += ["--extend-ignore", "ALL"]
         argv += ["--extend-select", only]
 
-    # If we're using stdin, provide the filename.
-    if use_stdin:
-        argv += ["--stdin-filename", document.path]
-    else:
-        argv += [document.path]
+    # Provide the document filename.
+    argv += ["--stdin-filename", document.path]
 
     return run_path(
         argv=argv,
-        use_stdin=use_stdin,
         cwd=settings["cwd"],
         source=document.source.replace("\r\n", "\n"),
     )
 
 
 def _run_subcommand_on_document(
-    document: workspace.Document, args: Sequence[str], source: str | None = None
+    document: workspace.Document, *, args: Sequence[str]
 ) -> RunResult:
     """Runs the tool subcommand on the given document."""
     settings = _get_settings_by_document(document)
 
     argv: list[str] = [_executable_path(settings)] + list(args)
     return run_path(
-        argv=argv, use_stdin=source is not None, cwd=settings["cwd"], source=source
+        argv=argv,
+        cwd=settings["cwd"],
+        source=document.source.replace("\r\n", "\n"),
     )
 
 
