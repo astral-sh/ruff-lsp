@@ -89,6 +89,8 @@ LSP_SERVER = server.LanguageServer(
 
 TOOL_MODULE = "ruff.exe" if platform.system() == "Windows" else "ruff"
 TOOL_DISPLAY = "Ruff"
+
+# Arguments provided to every Ruff invocation.
 TOOL_ARGS = [
     "--force-exclude",
     "--no-cache",
@@ -99,6 +101,37 @@ TOOL_ARGS = [
     "-",
 ]
 
+# Arguments that are not allowed to be passed to Ruff.
+TOOL_NON_ARGS = [
+    # Arguments that enforce required behavior. These can be ignored with a warning.
+    "--force-exclude",
+    "--no-cache",
+    "--no-fix",
+    "--quiet",
+    # Arguments that contradict the required behavior. These can be ignored with a
+    # warning.
+    "--diff",
+    "--exit-non-zero-on-fix",
+    "-e",
+    "--exit-zero",
+    "--fix",
+    "--fix-only",
+    "-h",
+    "--help",
+    "--no-force-exclude",
+    "--show-files",
+    "--show-fixes",
+    "--show-settings",
+    "--show-source",
+    "--silent",
+    "--statistics",
+    "--verbose",
+    "-w",
+    "--watch",
+    # Arguments that are not supported at all, and will error when provided.
+    # "--stdin-filename",
+    # "--format",
+]
 
 ###
 # Linting.
@@ -1017,7 +1050,13 @@ def _run_tool_on_document(
     settings = _get_settings_by_document(document)
 
     executable = _executable_path(settings)
-    argv: list[str] = [executable] + TOOL_ARGS + settings["args"] + list(extra_args)
+    argv: list[str] = [executable] + TOOL_ARGS + list(extra_args)
+
+    for arg in settings["args"]:
+        if arg in TOOL_NON_ARGS:
+            log_to_output(f"Ignoring unsupported argument: {arg}")
+        else:
+            argv.append(arg)
 
     # If we're trying to run a single rule, add it to the command line, and disable
     # all other rules (if the Ruff version is sufficiently recent).

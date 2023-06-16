@@ -158,7 +158,6 @@ Upon successful installation, you should see errors surfaced directly in your ed
 
 ![](https://user-images.githubusercontent.com/1309177/209418462-ae106d1f-dbc3-4d53-bae2-66bfccc3e841.png)
 
-
 ### Example: Kate
 
 To use `ruff-lsp` with [Kate](https://kate-editor.org/), add something like the following to
@@ -166,13 +165,13 @@ the LSP client's `settings.json`:
 
 ```json
 {
-    "servers": {
-        "python": {
-            "command": ["ruff-lsp"],
-            "url": "https://github.com/charliermarsh/ruff-lsp",
-            "highlightingModeRegex": "^Python$"
-        }
+  "servers": {
+    "python": {
+      "command": ["ruff-lsp"],
+      "url": "https://github.com/charliermarsh/ruff-lsp",
+      "highlightingModeRegex": "^Python$"
     }
+  }
 }
 ```
 
@@ -181,15 +180,15 @@ the LSP client's `settings.json`:
 The exact mechanism by which settings will be passed to `ruff-lsp` will vary by editor. However,
 the following settings are supported:
 
-| Settings         | Default | Description                                                                              |
-| ---------------- | ------- | ---------------------------------------------------------------------------------------- |
-| args             | `[]`    | Custom arguments passed to `ruff`. E.g `"args": ["--config=/path/to/pyproject.toml"]`.   |
-| logLevel         | `error` | Sets the tracing level for the extension.                                                |
-| path             | `[]`    | Setting to provide custom `ruff` executables, to try in order. E.g. `["/path/to/ruff"]`. |
-| interpreter      | `[]`    | Path to a Python interpreter to use to run the linter server.                            |
-| showNotification | `off`   | Setting to control when a notification is shown.                                         |
-| organizeImports  | `true`  | Whether to register Ruff as capable of handling `source.organizeImports` actions.        |
-| fixAll           | `true`  | Whether to register Ruff as capable of handling `source.fixAll` actions.                 |
+| Settings         | Default | Description                                                                                                                                                                                                                                                 |
+| ---------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| args             | `[]`    | Additional command-line arguments to pass to `ruff`, e.g., `"args": ["--config=/path/to/pyproject.toml"]`. Supports a subset of Ruff's command-line arguments, ignoring those that are required to operate the LSP, like `--force-exclude` and `--verbose`. |
+| logLevel         | `error` | Sets the tracing level for the extension: `error`, `warn`, `info`, or `debug`.                                                                                                                                                                              |
+| path             | `[]`    | Path to a custom `ruff` executable, e.g., `["/path/to/ruff"]`.                                                                                                                                                                                              |
+| interpreter      | `[]`    | Path to a Python interpreter to use to run the linter server.                                                                                                                                                                                               |
+| showNotification | `off`   | Setting to control when a notification is shown.                                                                                                                                                                                                            |
+| organizeImports  | `true`  | Whether to register Ruff as capable of handling `source.organizeImports` actions.                                                                                                                                                                           |
+| fixAll           | `true`  | Whether to register Ruff as capable of handling `source.fixAll` actions.                                                                                                                                                                                    |
 
 ## Development
 
