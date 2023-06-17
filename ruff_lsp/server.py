@@ -1125,7 +1125,7 @@ async def _run_tool_on_document(
         executable,
         argv,
         cwd=settings["cwd"],
-        source=document.source.replace("\r\n", "\n"),
+        source=document.source,
     )
 
 
@@ -1141,7 +1141,7 @@ async def _run_subcommand_on_document(
         executable,
         argv,
         cwd=settings["cwd"],
-        source=document.source.replace("\r\n", "\n"),
+        source=document.source,
     )
 
 
