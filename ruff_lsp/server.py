@@ -94,9 +94,6 @@ class UserSettings(TypedDict, total=False):
     run: Literal["onSave", "onType"]
     """Run Ruff on every keystroke (`onType`) or on save (`onSave`)."""
 
-    showNotifications: Literal["off", "always", "onWarning"]
-    """Setting to control when a notification is shown."""
-
     organizeImports: bool
     """Whether to register Ruff as capable of handling `source.organizeImports`."""
 
@@ -943,7 +940,6 @@ def _default_settings() -> UserSettings:
         "interpreter": GLOBAL_SETTINGS.get("interpreter", [sys.executable]),
         "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "fromEnvironment"),
         "run": GLOBAL_SETTINGS.get("run", "onType"),
-        "showNotifications": GLOBAL_SETTINGS.get("showNotifications", "off"),
         "organizeImports": GLOBAL_SETTINGS.get("organizeImports", True),
         "fixAll": GLOBAL_SETTINGS.get("fixAll", True),
     }
