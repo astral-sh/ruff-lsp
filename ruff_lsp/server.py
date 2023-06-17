@@ -146,28 +146,30 @@ def did_open(params: DidOpenTextDocumentParams) -> None:
     LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
 
-@LSP_SERVER.feature(TEXT_DOCUMENT_DID_SAVE)
-def did_save(params: DidSaveTextDocumentParams) -> None:
-    """LSP handler for textDocument/didSave request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    diagnostics: list[Diagnostic] = _linting_helper(document)
-    LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
-
-
-@LSP_SERVER.feature(TEXT_DOCUMENT_DID_CHANGE)
-def did_change(params: DidChangeTextDocumentParams) -> None:
-    """LSP handler for textDocument/didChange request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    diagnostics: list[Diagnostic] = _linting_helper(document)
-    LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
-
-
 @LSP_SERVER.feature(TEXT_DOCUMENT_DID_CLOSE)
 def did_close(params: DidCloseTextDocumentParams) -> None:
     """LSP handler for textDocument/didClose request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
     # Publishing empty diagnostics to clear the entries for this file.
     LSP_SERVER.publish_diagnostics(document.uri, [])
+
+
+@LSP_SERVER.feature(TEXT_DOCUMENT_DID_SAVE)
+def did_save(params: DidSaveTextDocumentParams) -> None:
+    """LSP handler for textDocument/didSave request."""
+    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    if _get_settings_by_document(document).get("run", "onSave") == "onSave":
+        diagnostics: list[Diagnostic] = _linting_helper(document)
+        LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
+
+
+@LSP_SERVER.feature(TEXT_DOCUMENT_DID_CHANGE)
+def did_change(params: DidChangeTextDocumentParams) -> None:
+    """LSP handler for textDocument/didChange request."""
+    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    if _get_settings_by_document(document).get("run", "onType") == "onType":
+        diagnostics: list[Diagnostic] = _linting_helper(document)
+        LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
 
 def _linting_helper(document: workspace.Document) -> list[Diagnostic]:
@@ -893,6 +895,7 @@ def _default_settings() -> dict[str, Any]:
         "path": GLOBAL_SETTINGS.get("path", []),
         "interpreter": GLOBAL_SETTINGS.get("interpreter", [sys.executable]),
         "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "fromEnvironment"),
+        "run": GLOBAL_SETTINGS.get("run", "onType"),
         "showNotifications": GLOBAL_SETTINGS.get("showNotifications", "off"),
         "organizeImports": GLOBAL_SETTINGS.get("organizeImports", True),
         "fixAll": GLOBAL_SETTINGS.get("fixAll", True),
