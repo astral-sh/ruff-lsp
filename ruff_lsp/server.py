@@ -14,7 +14,7 @@ import sys
 import sysconfig
 import time
 from pathlib import Path
-from typing import Any, Sequence, cast
+from typing import Sequence, cast
 
 from lsprotocol.types import (
     CODE_ACTION_RESOLVE,
@@ -55,7 +55,7 @@ from lsprotocol.types import (
     WorkspaceEdit,
 )
 from pygls import protocol, server, uris, workspace
-from typing_extensions import TypedDict
+from typing_extensions import Literal, TypedDict
 
 from ruff_lsp import __version__, utils
 from ruff_lsp.utils import RunResult
@@ -72,8 +72,51 @@ if ruff_lsp_debug:
     if ruff_beta_internal:
         logger.info("RUFF_BETA_INTERNAL is active")
 
-GLOBAL_SETTINGS: dict[str, str] = {}
-WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
+
+class UserSettings(TypedDict, total=False):
+    """Settings for the Ruff Language Server."""
+
+    logLevel: Literal["error", "warning", "info", "debug"]
+    """The log level for the Ruff server. Defaults to "error"."""
+
+    args: list[str]
+    """Additional command-line arguments to pass to `ruff`."""
+
+    path: list[str]
+    """Path to a custom `ruff` executable."""
+
+    interpreter: list[str]
+    """Path to a Python interpreter to use to run the linter server."""
+
+    importStrategy: Literal["fromEnvironment", "useBundled"]
+    """Strategy for loading the `ruff` executable."""
+
+    run: Literal["onSave", "onType"]
+    """Run Ruff on every keystroke (`onType`) or on save (`onSave`)."""
+
+    showNotifications: Literal["off", "always", "onWarning"]
+    """Setting to control when a notification is shown."""
+
+    organizeImports: bool
+    """Whether to register Ruff as capable of handling `source.organizeImports`."""
+
+    fixAll: bool
+    """Whether to register Ruff as capable of handling `source.fixAll`."""
+
+
+class WorkspaceSettings(TypedDict, UserSettings):
+    cwd: str | None
+    """The current working directory for the workspace."""
+
+    workspacePath: str
+    """The path to the workspace."""
+
+    workspace: str
+    """The workspace name."""
+
+
+GLOBAL_SETTINGS: UserSettings = {}
+WORKSPACE_SETTINGS: dict[str, WorkspaceSettings] = {}
 INTERPRETER_PATHS: dict[str, str] = {}
 EXECUTABLE_VERSIONS: dict[str, str] = {}
 CLIENT_CAPABILITIES: dict[str, bool] = {
@@ -132,6 +175,7 @@ TOOL_NON_ARGS = [
     # "--stdin-filename",
     # "--format",
 ]
+
 
 ###
 # Linting.
@@ -823,10 +867,12 @@ def initialize(params: InitializeParams) -> None:
     # CLIENT_CAPABILITIES[TEXT_DOCUMENT_FORMATTING] = ruff_beta_internal
 
     # Extract `settings` from the initialization options.
-    workspace_settings = (params.initialization_options or {}).get(  # type: ignore
+    workspace_settings: list[WorkspaceSettings] | WorkspaceSettings | None = (
+        params.initialization_options or {}
+    ).get(
         "settings",
     )
-    global_settings = (params.initialization_options or {}).get(  # type: ignore
+    global_settings: UserSettings | None = (params.initialization_options or {}).get(
         "globalSettings", {}
     )
 
@@ -848,6 +894,7 @@ def initialize(params: InitializeParams) -> None:
         GLOBAL_SETTINGS.update(workspace_settings)
 
     # Update workspace settings.
+    settings: list[WorkspaceSettings]
     if isinstance(workspace_settings, dict):
         settings = [workspace_settings]
     elif isinstance(workspace_settings, list):
@@ -888,7 +935,7 @@ def _supports_code_action_resolve(capabilities: ClientCapabilities) -> bool:
 ###
 
 
-def _default_settings() -> dict[str, Any]:
+def _default_settings() -> UserSettings:
     return {
         "logLevel": GLOBAL_SETTINGS.get("logLevel", "error"),
         "args": GLOBAL_SETTINGS.get("args", []),
@@ -902,13 +949,13 @@ def _default_settings() -> dict[str, Any]:
     }
 
 
-def _update_workspace_settings(settings: list[dict[str, Any]]) -> None:
+def _update_workspace_settings(settings: list[WorkspaceSettings]) -> None:
     if not settings:
         workspace_path = os.getcwd()
         WORKSPACE_SETTINGS[workspace_path] = {
-            **_default_settings(),
+            **_default_settings(),  # type: ignore[misc]
             "cwd": workspace_path,
-            "workspaceFS": workspace_path,
+            "workspacePath": workspace_path,
             "workspace": uris.from_fs_path(workspace_path),
         }
         return
@@ -917,26 +964,26 @@ def _update_workspace_settings(settings: list[dict[str, Any]]) -> None:
         if "workspace" in setting:
             workspace_path = uris.to_fs_path(setting["workspace"])
             WORKSPACE_SETTINGS[workspace_path] = {
-                **_default_settings(),
+                **_default_settings(),  # type: ignore[misc]
                 **setting,
                 "cwd": workspace_path,
-                "workspaceFS": workspace_path,
+                "workspacePath": workspace_path,
                 "workspace": setting["workspace"],
             }
         else:
             workspace_path = os.getcwd()
             WORKSPACE_SETTINGS[workspace_path] = {
-                **_default_settings(),
+                **_default_settings(),  # type: ignore[misc]
                 **setting,
                 "cwd": workspace_path,
-                "workspaceFS": workspace_path,
+                "workspacePath": workspace_path,
                 "workspace": uris.from_fs_path(workspace_path),
             }
 
 
 def _get_document_key(document: workspace.Document) -> str | None:
     document_workspace = Path(document.path)
-    workspaces = {s["workspaceFS"] for s in WORKSPACE_SETTINGS.values()}
+    workspaces = {s["workspacePath"] for s in WORKSPACE_SETTINGS.values()}
 
     while document_workspace != document_workspace.parent:
         if str(document_workspace) in workspaces:
@@ -945,7 +992,7 @@ def _get_document_key(document: workspace.Document) -> str | None:
     return None
 
 
-def _get_settings_by_document(document: workspace.Document | None) -> dict[str, Any]:
+def _get_settings_by_document(document: workspace.Document | None) -> WorkspaceSettings:
     if document is None or document.path is None:
         return list(WORKSPACE_SETTINGS.values())[0]
 
@@ -953,9 +1000,9 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
     if key is None:
         workspace_path = os.fspath(Path(document.path).parent)
         return {
-            **_default_settings(),
+            **_default_settings(),  # type: ignore[misc]
             "cwd": None,
-            "workspaceFS": workspace_path,
+            "workspacePath": workspace_path,
             "workspace": uris.from_fs_path(workspace_path),
         }
 
@@ -967,7 +1014,7 @@ def _get_settings_by_document(document: workspace.Document | None) -> dict[str, 
 ###
 
 
-def _executable_path(settings: dict[str, Any]) -> str:
+def _executable_path(settings: WorkspaceSettings) -> str:
     """Returns the path to the executable."""
     bundle = get_bundle()
 
