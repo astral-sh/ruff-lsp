@@ -1,13 +1,13 @@
 # ruff-lsp
 
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![image](https://img.shields.io/pypi/v/ruff-lsp.svg)](https://pypi.python.org/pypi/ruff-lsp)
 [![image](https://img.shields.io/pypi/l/ruff-lsp.svg)](https://pypi.python.org/pypi/ruff-lsp)
 [![image](https://img.shields.io/pypi/pyversions/ruff-lsp.svg)](https://pypi.python.org/pypi/ruff-lsp)
 [![Actions status](https://github.com/astral-sh/ruff-lsp/workflows/CI/badge.svg)](https://github.com/astral-sh/ruff-lsp/actions)
 
 A [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for
-[Ruff](https://github.com/charliermarsh/ruff), an extremely fast Python linter and code transformation
+[Ruff](https://github.com/astral-sh/ruff), an extremely fast Python linter and code transformation
 tool, written in Rust.
 
 Enables Ruff to be used in any editor that supports the LSP, including [Neovim](#example-neovim),
@@ -168,7 +168,7 @@ the LSP client's `settings.json`:
   "servers": {
     "python": {
       "command": ["ruff-lsp"],
-      "url": "https://github.com/charliermarsh/ruff-lsp",
+      "url": "https://github.com/astral-sh/ruff-lsp",
       "highlightingModeRegex": "^Python$"
     }
   }
@@ -205,6 +205,6 @@ MIT
 
 <div align="center">
   <a target="_blank" href="https://astral.sh" style="background:none">
-    <img src="https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/svg/Astral.svg">
+    <img src="https://raw.githubusercontent.com/astral-sh/ruff/main/assets/svg/Astral.svg">
   </a>
 </div>
