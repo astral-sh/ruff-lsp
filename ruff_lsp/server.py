@@ -51,10 +51,9 @@ from lsprotocol.types import (
     Range,
     TextDocumentEdit,
     TextEdit,
-    TraceValues,
     WorkspaceEdit,
 )
-from pygls import protocol, server, uris, workspace
+from pygls import server, uris, workspace
 from typing_extensions import Literal, TypedDict
 
 from ruff_lsp import __version__, utils
@@ -902,16 +901,6 @@ def initialize(params: InitializeParams) -> None:
 
     _update_workspace_settings(settings)
 
-    if isinstance(LSP_SERVER.lsp, protocol.LanguageServerProtocol):
-        if any(setting["logLevel"] == "debug" for setting in settings):
-            LSP_SERVER.lsp.trace = TraceValues.Verbose
-        elif any(
-            setting["logLevel"] in ["error", "warn", "info"] for setting in settings
-        ):
-            LSP_SERVER.lsp.trace = TraceValues.Messages
-        else:
-            LSP_SERVER.lsp.trace = TraceValues.Off
-
 
 def _supports_code_action_resolve(capabilities: ClientCapabilities) -> bool:
     """Returns True if the client supports codeAction/resolve request for edits."""
@@ -932,7 +921,7 @@ def _supports_code_action_resolve(capabilities: ClientCapabilities) -> bool:
 ###
 
 
-def _default_settings() -> UserSettings:
+def _get_global_defaults() -> UserSettings:
     return {
         "logLevel": GLOBAL_SETTINGS.get("logLevel", "error"),
         "args": GLOBAL_SETTINGS.get("args", []),
@@ -949,7 +938,7 @@ def _update_workspace_settings(settings: list[WorkspaceSettings]) -> None:
     if not settings:
         workspace_path = os.getcwd()
         WORKSPACE_SETTINGS[workspace_path] = {
-            **_default_settings(),  # type: ignore[misc]
+            **_get_global_defaults(),  # type: ignore[misc]
             "cwd": workspace_path,
             "workspacePath": workspace_path,
             "workspace": uris.from_fs_path(workspace_path),
@@ -960,7 +949,7 @@ def _update_workspace_settings(settings: list[WorkspaceSettings]) -> None:
         if "workspace" in setting:
             workspace_path = uris.to_fs_path(setting["workspace"])
             WORKSPACE_SETTINGS[workspace_path] = {
-                **_default_settings(),  # type: ignore[misc]
+                **_get_global_defaults(),  # type: ignore[misc]
                 **setting,
                 "cwd": workspace_path,
                 "workspacePath": workspace_path,
@@ -969,7 +958,7 @@ def _update_workspace_settings(settings: list[WorkspaceSettings]) -> None:
         else:
             workspace_path = os.getcwd()
             WORKSPACE_SETTINGS[workspace_path] = {
-                **_default_settings(),  # type: ignore[misc]
+                **_get_global_defaults(),  # type: ignore[misc]
                 **setting,
                 "cwd": workspace_path,
                 "workspacePath": workspace_path,
@@ -994,9 +983,10 @@ def _get_settings_by_document(document: workspace.Document | None) -> WorkspaceS
 
     key = _get_document_key(document)
     if key is None:
+        # This is either a non-workspace file or there is no workspace.
         workspace_path = os.fspath(Path(document.path).parent)
         return {
-            **_default_settings(),  # type: ignore[misc]
+            **_get_global_defaults(),  # type: ignore[misc]
             "cwd": None,
             "workspacePath": workspace_path,
             "workspace": uris.from_fs_path(workspace_path),
@@ -1146,11 +1136,7 @@ def log_to_output(message: str, msg_type: MessageType = MessageType.Log) -> None
 
 def log_error(message: str) -> None:
     LSP_SERVER.show_message_log(message, MessageType.Error)
-    if os.getenv("LS_SHOW_NOTIFICATION", "off") in [
-        "onError",
-        "onWarning",
-        "always",
-    ]:
+    if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["onError", "onWarning", "always"]:
         LSP_SERVER.show_message(message, MessageType.Error)
 
 
