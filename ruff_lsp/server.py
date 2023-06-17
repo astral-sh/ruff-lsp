@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 from typing import Sequence, cast
 
+from lsprotocol import validators
 from lsprotocol.types import (
     CODE_ACTION_RESOLVE,
     INITIALIZE,
@@ -598,11 +599,15 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
 
     # Add "Disable for this line" for every diagnostic.
     if not params.context.only or CodeActionKind.QuickFix in params.context.only:
+        lines: list[str] | None = None
         for diagnostic in params.context.diagnostics:
             if diagnostic.source == "Ruff":
                 noqa_row = cast(DiagnosticData, diagnostic.data).get("noqa_row")
                 if noqa_row is not None:
-                    line = document.lines[noqa_row - 1].rstrip("\r\n")
+                    if lines is None:
+                        lines = document.lines
+                    line = lines[noqa_row - 1].rstrip("\r\n")
+
                     match = NOQA_REGEX.search(line)
                     # `foo  # noqa: OLD` -> `foo  # noqa: OLD,NEW`
                     if match and match.group("codes") is not None:
@@ -744,7 +749,7 @@ def _result_to_edits(
         TextEdit(
             range=Range(
                 start=Position(line=0, character=0),
-                end=Position(line=len(document.lines), character=0),
+                end=Position(line=validators.UINTEGER_MAX_VALUE, character=0),
             ),
             new_text=new_source,
         )
@@ -797,21 +802,24 @@ def _create_workspace_edit(document: workspace.Document, fix: Fix) -> WorkspaceE
     )
 
 
-def _get_line_endings(lines: list[str]) -> str | None:
+def _get_line_endings(text: str) -> str | None:
     """Returns line endings used in the text."""
-    try:
-        if lines[0][-2:] == "\r\n":
-            return "\r\n"
-        return "\n"
-    except Exception:
-        return None
+    for i in range(len(text)):
+        if text[i] == "\r":
+            if i < len(text) - 1 and text[i + 1] == "\n":
+                return "\r\n"  # CLRF
+            else:
+                return "\r"  # CR
+        elif text[i] == "\n":
+            return "\n"  # LF
+    return None  # No line ending found
 
 
 def _match_line_endings(document: workspace.Document, text: str) -> str:
     """Ensures that the edited text line endings matches the document line endings."""
-    expected = _get_line_endings(document.source.splitlines(keepends=True))
-    actual = _get_line_endings(text.splitlines(keepends=True))
-    if actual == expected or actual is None or expected is None:
+    expected = _get_line_endings(document.source)
+    actual = _get_line_endings(text)
+    if actual is None or expected is None or actual == expected:
         return text
     return text.replace(actual, expected)
 
