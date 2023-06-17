@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
+import pytest
 from lsprotocol.types import (
     DocumentFormattingParams,
     FormattingOptions,
     TextDocumentIdentifier,
     WorkspaceEdit,
 )
+from pygls import server
 from pygls.workspace import Workspace
 
-from ruff_lsp.server import format_document_impl
+from ruff_lsp.server import _format_document_impl
 from tests.client import utils
 
 original = """
@@ -37,7 +40,8 @@ class MockLanguageServer:
         self.applied_edits.append(edit)
 
 
-def test_format(tmp_path):
+@pytest.mark.asyncio
+async def test_format(tmp_path):
     test_file = tmp_path.joinpath("main.py")
     test_file.write_text(original)
     uri = utils.as_uri(str(test_file))
@@ -48,7 +52,9 @@ def test_format(tmp_path):
         options=FormattingOptions(tab_size=4, insert_spaces=True),
         work_done_token=None,
     )
-    # noinspection PyTypeChecker
-    result = format_document_impl(mock_language_server, dummy_params)  # type: ignore
+
+    result = await _format_document_impl(
+        cast(server.LanguageServer, mock_language_server), dummy_params
+    )
     [edit] = result
     assert edit.new_text == expected
