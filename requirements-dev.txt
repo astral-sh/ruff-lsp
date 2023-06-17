@@ -60,6 +60,10 @@ pygls==1.0.2
 pyproject-hooks==1.0.0
     # via build
 pytest==7.3.2
+    # via
+    #   pytest-asyncio
+    #   ruff-lsp (pyproject.toml)
+pytest-asyncio==0.21.0
     # via ruff-lsp (pyproject.toml)
 python-lsp-jsonrpc==1.0.0
     # via ruff-lsp (pyproject.toml)
@@ -76,7 +80,7 @@ typed-ast==1.5.4
     # via
     #   black
     #   mypy
-typeguard==4.0.0
+typeguard==3.0.2
     # via pygls
 typing-extensions==4.6.3
     # via
@@ -85,6 +89,7 @@ typing-extensions==4.6.3
     #   importlib-metadata
     #   mypy
     #   platformdirs
+    #   pytest-asyncio
     #   ruff-lsp (pyproject.toml)
     #   typeguard
 ujson==5.7.0

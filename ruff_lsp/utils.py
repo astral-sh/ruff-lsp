@@ -65,6 +65,6 @@ def version(executable: str) -> str:
 class RunResult:
     """Object to hold result from running tool."""
 
-    def __init__(self, stdout: str, stderr: str):
-        self.stdout: str = stdout
-        self.stderr: str = stderr
+    def __init__(self, stdout: bytes, stderr: bytes):
+        self.stdout: bytes = stdout
+        self.stderr: bytes = stderr

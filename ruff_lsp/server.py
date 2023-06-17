@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
-import os.path
-import platform
 import re
 import shutil
-import subprocess
 import sys
 import sysconfig
-import time
 from pathlib import Path
 from typing import Sequence, cast
 
@@ -72,6 +69,12 @@ if ruff_lsp_debug:
         logger.info("RUFF_BETA_INTERNAL is active")
 
 
+if sys.platform == "win32" and sys.version_info < (3, 8):
+    # The ProactorEventLoop is required for subprocesses on Windows.
+    # It's the default policy in Python 3.8, but not in Python 3.7.
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+
 class UserSettings(TypedDict, total=False):
     """Settings for the Ruff Language Server."""
 
@@ -126,7 +129,7 @@ LSP_SERVER = server.LanguageServer(
     max_workers=MAX_WORKERS,
 )
 
-TOOL_MODULE = "ruff.exe" if platform.system() == "Windows" else "ruff"
+TOOL_MODULE = "ruff.exe" if sys.platform == "win32" else "ruff"
 TOOL_DISPLAY = "Ruff"
 
 # Arguments provided to every Ruff invocation.
@@ -179,10 +182,10 @@ TOOL_NON_ARGS = [
 
 
 @LSP_SERVER.feature(TEXT_DOCUMENT_DID_OPEN)
-def did_open(params: DidOpenTextDocumentParams) -> None:
+async def did_open(params: DidOpenTextDocumentParams) -> None:
     """LSP handler for textDocument/didOpen request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    diagnostics: list[Diagnostic] = _linting_helper(document)
+    diagnostics: list[Diagnostic] = await _lint_document_impl(document)
     LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
 
@@ -195,25 +198,25 @@ def did_close(params: DidCloseTextDocumentParams) -> None:
 
 
 @LSP_SERVER.feature(TEXT_DOCUMENT_DID_SAVE)
-def did_save(params: DidSaveTextDocumentParams) -> None:
+async def did_save(params: DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
     if _get_settings_by_document(document).get("run", "onSave") == "onSave":
-        diagnostics: list[Diagnostic] = _linting_helper(document)
+        diagnostics: list[Diagnostic] = await _lint_document_impl(document)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
 
 @LSP_SERVER.feature(TEXT_DOCUMENT_DID_CHANGE)
-def did_change(params: DidChangeTextDocumentParams) -> None:
+async def did_change(params: DidChangeTextDocumentParams) -> None:
     """LSP handler for textDocument/didChange request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
     if _get_settings_by_document(document).get("run", "onType") == "onType":
-        diagnostics: list[Diagnostic] = _linting_helper(document)
+        diagnostics: list[Diagnostic] = await _lint_document_impl(document)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
 
-def _linting_helper(document: workspace.Document) -> list[Diagnostic]:
-    result = _run_tool_on_document(document)
+async def _lint_document_impl(document: workspace.Document) -> list[Diagnostic]:
+    result = await _run_tool_on_document(document)
     if result is None:
         return []
     return _parse_output(result.stdout) if result.stdout else []
@@ -251,7 +254,7 @@ def _parse_fix(content: Fix | LegacyFix | None) -> Fix | None:
         return fix
 
 
-def _parse_output(content: str) -> list[Diagnostic]:
+def _parse_output(content: bytes) -> list[Diagnostic]:
     """Parse Ruff's JSON output."""
     diagnostics: list[Diagnostic] = []
 
@@ -352,7 +355,7 @@ CODE_REGEX = re.compile(r"[A-Z]{1,3}[0-9]{3}")
 
 
 @LSP_SERVER.feature(TEXT_DOCUMENT_HOVER)
-def hover(params: HoverParams) -> Hover | None:
+async def hover(params: HoverParams) -> Hover | None:
     """LSP handler for textDocument/hover request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
     match = NOQA_REGEX.search(document.lines[params.position.line])
@@ -370,12 +373,14 @@ def hover(params: HoverParams) -> Hover | None:
         end += codes_start
         if start <= params.position.character < end:
             code = match.group()
-            result = _run_subcommand_on_document(document, args=["--explain", code])
+            result = await _run_subcommand_on_document(
+                document, args=["--explain", code]
+            )
             if result.stdout:
                 return Hover(
                     contents=MarkupContent(
                         kind=MarkupKind.Markdown,
-                        value=result.stdout.strip(),
+                        value=result.stdout.decode("utf-8").strip(),
                     )
                 )
 
@@ -463,14 +468,14 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 and len(params.context.only) == 1
                 and kind in params.context.only
             ):
-                results = _fix_helper(document, only="I001")
-                if results:
+                edits = await _fix_document_impl(document, only="I001")
+                if edits:
                     return [
                         CodeAction(
                             title="Ruff: Organize Imports",
                             kind=kind,
                             data=params.text_document.uri,
-                            edit=_create_workspace_edits(document, results),
+                            edit=_create_workspace_edits(document, edits),
                             diagnostics=[],
                         )
                     ]
@@ -488,14 +493,14 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 and len(params.context.only) == 1
                 and kind in params.context.only
             ):
-                results = _fix_helper(document)
-                if results:
+                edits = await _fix_document_impl(document)
+                if edits:
                     return [
                         CodeAction(
                             title="Ruff: Fix All",
                             kind=kind,
                             data=params.text_document.uri,
-                            edit=_create_workspace_edits(document, results),
+                            edit=_create_workspace_edits(document, edits),
                             diagnostics=[
                                 diagnostic
                                 for diagnostic in params.context.diagnostics
@@ -526,14 +531,14 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     ),
                 )
             else:
-                results = _fix_helper(document, only="I001")
-                if results:
+                edits = await _fix_document_impl(document, only="I001")
+                if edits:
                     actions.append(
                         CodeAction(
                             title="Ruff: Organize Imports",
                             kind=CodeActionKind.SourceOrganizeImports,
                             data=params.text_document.uri,
-                            edit=_create_workspace_edits(document, results),
+                            edit=_create_workspace_edits(document, edits),
                             diagnostics=[],
                         ),
                     )
@@ -554,14 +559,14 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     ),
                 )
             else:
-                results = _fix_helper(document)
-                if results:
+                edits = await _fix_document_impl(document)
+                if edits:
                     actions.append(
                         CodeAction(
                             title="Ruff: Fix All",
                             kind=CodeActionKind.SourceFixAll,
                             data=params.text_document.uri,
-                            edit=_create_workspace_edits(document, results),
+                            edit=_create_workspace_edits(document, edits),
                             diagnostics=[
                                 diagnostic
                                 for diagnostic in params.context.diagnostics
@@ -648,7 +653,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
 
 
 @LSP_SERVER.feature(CODE_ACTION_RESOLVE)
-def resolve_code_action(params: CodeAction) -> CodeAction:
+async def resolve_code_action(params: CodeAction) -> CodeAction:
     """LSP handler for codeAction/resolve request."""
     document = LSP_SERVER.workspace.get_document(cast(str, params.data))
 
@@ -659,35 +664,38 @@ def resolve_code_action(params: CodeAction) -> CodeAction:
         f"{CodeActionKind.SourceOrganizeImports.value}.ruff",
     ):
         # Generate the "Ruff: Organize Imports" edit
-        params.edit = _create_workspace_edits(
-            document, _fix_helper(document, only="I001")
-        )
+        results = await _fix_document_impl(document, only="I001")
+        params.edit = _create_workspace_edits(document, results)
+
     elif settings["fixAll"] and params.kind in (
         CodeActionKind.SourceFixAll,
         f"{CodeActionKind.SourceFixAll.value}.ruff",
     ):
         # Generate the "Ruff: Fix All" edit.
-        params.edit = _create_workspace_edits(document, _fix_helper(document))
+        results = await _fix_document_impl(document)
+        params.edit = _create_workspace_edits(document, results)
 
     return params
 
 
 @LSP_SERVER.command("ruff.applyAutofix")
-def apply_autofix(arguments: tuple[TextDocument]):
+async def apply_autofix(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     text_document = LSP_SERVER.workspace.get_document(uri)
+    results = await _fix_document_impl(text_document)
     LSP_SERVER.apply_edit(
-        _create_workspace_edits(text_document, _fix_helper(text_document)),
+        _create_workspace_edits(text_document, results),
         "Ruff: Fix all auto-fixable problems",
     )
 
 
 @LSP_SERVER.command("ruff.applyOrganizeImports")
-def apply_organize_imports(arguments: tuple[TextDocument]):
+async def apply_organize_imports(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     text_document = LSP_SERVER.workspace.get_document(uri)
+    results = await _fix_document_impl(text_document, only="I001")
     LSP_SERVER.apply_edit(
-        _create_workspace_edits(text_document, _fix_helper(text_document, only="I001")),
+        _create_workspace_edits(text_document, results),
         "Ruff: Format imports",
     )
 
@@ -695,32 +703,35 @@ def apply_organize_imports(arguments: tuple[TextDocument]):
 if os.environ.get("RUFF_BETA_INTERNAL"):
 
     @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
-    def format_document(
-        language_server: server.LanguageServer, arguments: DocumentFormattingParams
+    async def format_document(
+        language_server: server.LanguageServer,
+        arguments: DocumentFormattingParams,
     ) -> list[TextEdit] | None:
-        return format_document_impl(language_server, arguments)
+        return await _format_document_impl(language_server, arguments)
 
 
-def format_document_impl(
-    language_server: server.LanguageServer, arguments: DocumentFormattingParams
+async def _format_document_impl(
+    language_server: server.LanguageServer,
+    arguments: DocumentFormattingParams,
 ) -> list[TextEdit]:
     uri = arguments.text_document.uri
     document = language_server.workspace.get_document(uri)
-    result = _run_subcommand_on_document(document, args=["format", "-"])
+    result = await _run_subcommand_on_document(document, args=["format", "-"])
     return _result_to_edits(document, result)
 
 
-def _fix_helper(
+async def _fix_document_impl(
     document: workspace.Document,
     *,
     only: str | None = None,
 ) -> list[TextEdit]:
-    result = _run_tool_on_document(document, extra_args=["--fix"], only=only)
+    result = await _run_tool_on_document(document, extra_args=["--fix"], only=only)
     return _result_to_edits(document, result)
 
 
 def _result_to_edits(
-    document: workspace.Document, result: RunResult | None
+    document: workspace.Document,
+    result: RunResult | None,
 ) -> list[TextEdit]:
     if result is None:
         return []
@@ -728,7 +739,7 @@ def _result_to_edits(
     if not result.stdout:
         return []
 
-    new_source = _match_line_endings(document, result.stdout)
+    new_source = _match_line_endings(document, result.stdout.decode("utf-8"))
 
     # Skip last line ending in a notebook cell.
     if document.uri.startswith("vscode-notebook-cell"):
@@ -753,7 +764,7 @@ def _result_to_edits(
 
 def _create_workspace_edits(
     document: workspace.Document,
-    results: Sequence[TextEdit | AnnotatedTextEdit],
+    edits: Sequence[TextEdit | AnnotatedTextEdit],
 ) -> WorkspaceEdit:
     return WorkspaceEdit(
         document_changes=[
@@ -762,7 +773,7 @@ def _create_workspace_edits(
                     uri=document.uri,
                     version=0 if document.version is None else document.version,
                 ),
-                edits=list(results),
+                edits=list(edits),
             )
         ],
     )
@@ -816,30 +827,28 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
     return text.replace(actual, expected)
 
 
-def run_path(
+async def run_path(
+    program: str,
     argv: Sequence[str],
     *,
+    source: str,
     cwd: str | None = None,
-    source: str | None = None,
 ) -> RunResult:
     """Runs as an executable."""
-    log_to_output(f"Running Ruff with: {argv}")
-    start = time.time()
+    log_to_output(f"Running Ruff with: {program} {argv}")
 
-    with subprocess.Popen(
-        argv,
-        encoding="utf-8",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        stdin=subprocess.PIPE,
+    process = await asyncio.create_subprocess_exec(
+        program,
+        *argv,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        stdin=asyncio.subprocess.PIPE,
         cwd=cwd,
-    ) as process:
-        result = RunResult(*process.communicate(input=source))
+    )
+    result = RunResult(*await process.communicate(input=source.encode("utf-8")))
 
-    end = time.time()
-    log_to_output(f"Ruff finished in: {end - start:.3f}s")
     if result.stderr:
-        log_to_output(result.stderr)
+        log_to_output(result.stderr.decode("utf-8"))
 
     return result
 
@@ -1064,7 +1073,7 @@ def _executable_version(executable: str) -> str:
     return EXECUTABLE_VERSIONS[executable]
 
 
-def _run_tool_on_document(
+async def _run_tool_on_document(
     document: workspace.Document,
     *,
     extra_args: Sequence[str] = [],
@@ -1086,7 +1095,7 @@ def _run_tool_on_document(
     settings = _get_settings_by_document(document)
 
     executable = _executable_path(settings)
-    argv: list[str] = [executable] + TOOL_ARGS + list(extra_args)
+    argv: list[str] = TOOL_ARGS + list(extra_args)
 
     for arg in settings["args"]:
         if arg in TOOL_NON_ARGS:
@@ -1104,22 +1113,25 @@ def _run_tool_on_document(
     # Provide the document filename.
     argv += ["--stdin-filename", document.path]
 
-    return run_path(
-        argv=argv,
+    return await run_path(
+        executable,
+        argv,
         cwd=settings["cwd"],
         source=document.source.replace("\r\n", "\n"),
     )
 
 
-def _run_subcommand_on_document(
+async def _run_subcommand_on_document(
     document: workspace.Document, *, args: Sequence[str]
 ) -> RunResult:
     """Runs the tool subcommand on the given document."""
     settings = _get_settings_by_document(document)
 
-    argv: list[str] = [_executable_path(settings)] + list(args)
-    return run_path(
-        argv=argv,
+    executable = _executable_path(settings)
+    argv: list[str] = list(args)
+    return await run_path(
+        executable,
+        argv,
         cwd=settings["cwd"],
         source=document.source.replace("\r\n", "\n"),
     )
@@ -1130,8 +1142,8 @@ def _run_subcommand_on_document(
 ###
 
 
-def log_to_output(message: str, msg_type: MessageType = MessageType.Log) -> None:
-    LSP_SERVER.show_message_log(message, msg_type)
+def log_to_output(message: str) -> None:
+    LSP_SERVER.show_message_log(message, MessageType.Log)
 
 
 def log_error(message: str) -> None:

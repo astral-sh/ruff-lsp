@@ -20,7 +20,7 @@ print(x)
 class TestServer(unittest.TestCase):
     maxDiff = None
 
-    def test_linting_example(self):
+    def test_linting_example(self) -> None:
         with tempfile.NamedTemporaryFile(suffix=".py") as fp:
             fp.write(CONTENTS.encode())
             fp.flush()
@@ -98,7 +98,7 @@ class TestServer(unittest.TestCase):
                 }
             self.assertEqual(expected, actual)
 
-    def test_no_initialization_options(self):
+    def test_no_initialization_options(self) -> None:
         with tempfile.NamedTemporaryFile(suffix=".py") as fp:
             fp.write(CONTENTS.encode())
             fp.flush()
