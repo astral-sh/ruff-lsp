@@ -52,9 +52,10 @@ from lsprotocol.types import (
     WorkspaceEdit,
 )
 from pygls import server, uris, workspace
-from typing_extensions import Literal, TypedDict
+from typing_extensions import TypedDict
 
 from ruff_lsp import __version__, utils
+from ruff_lsp.settings import UserSettings, WorkspaceSettings
 from ruff_lsp.utils import RunResult
 
 logger = logging.getLogger(__name__)
@@ -74,45 +75,6 @@ if sys.platform == "win32" and sys.version_info < (3, 8):
     # The ProactorEventLoop is required for subprocesses on Windows.
     # It's the default policy in Python 3.8, but not in Python 3.7.
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-
-
-class UserSettings(TypedDict, total=False):
-    """Settings for the Ruff Language Server."""
-
-    logLevel: Literal["error", "warning", "info", "debug"]
-    """The log level for the Ruff server. Defaults to "error"."""
-
-    args: list[str]
-    """Additional command-line arguments to pass to `ruff`."""
-
-    path: list[str]
-    """Path to a custom `ruff` executable."""
-
-    interpreter: list[str]
-    """Path to a Python interpreter to use to run the linter server."""
-
-    importStrategy: Literal["fromEnvironment", "useBundled"]
-    """Strategy for loading the `ruff` executable."""
-
-    run: Literal["onSave", "onType"]
-    """Run Ruff on every keystroke (`onType`) or on save (`onSave`)."""
-
-    organizeImports: bool
-    """Whether to register Ruff as capable of handling `source.organizeImports`."""
-
-    fixAll: bool
-    """Whether to register Ruff as capable of handling `source.fixAll`."""
-
-
-class WorkspaceSettings(TypedDict, UserSettings):
-    cwd: str | None
-    """The current working directory for the workspace."""
-
-    workspacePath: str
-    """The path to the workspace."""
-
-    workspace: str
-    """The workspace name."""
 
 
 GLOBAL_SETTINGS: UserSettings = {}
@@ -579,80 +541,84 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     )
 
     # Add "Ruff: Autofix" for every fixable diagnostic.
-    if not params.context.only or CodeActionKind.QuickFix in params.context.only:
-        for diagnostic in params.context.diagnostics:
-            if diagnostic.source == "Ruff":
-                fix = cast(DiagnosticData, diagnostic.data).get("fix")
-                if fix is not None:
-                    title: str
-                    if fix.get("message"):
-                        title = f"Ruff ({diagnostic.code}): {fix['message']}"
-                    elif diagnostic.code:
-                        title = f"Ruff: Fix {diagnostic.code}"
-                    else:
-                        title = "Ruff: Autofix"
+    if settings.get("codeAction", {}).get("fixViolation", {}).get("enable", True):
+        if not params.context.only or CodeActionKind.QuickFix in params.context.only:
+            for diagnostic in params.context.diagnostics:
+                if diagnostic.source == "Ruff":
+                    fix = cast(DiagnosticData, diagnostic.data).get("fix")
+                    if fix is not None:
+                        title: str
+                        if fix.get("message"):
+                            title = f"Ruff ({diagnostic.code}): {fix['message']}"
+                        elif diagnostic.code:
+                            title = f"Ruff: Fix {diagnostic.code}"
+                        else:
+                            title = "Ruff: Fix"
 
-                    actions.append(
-                        CodeAction(
-                            title=title,
-                            kind=CodeActionKind.QuickFix,
-                            data=params.text_document.uri,
-                            edit=_create_workspace_edit(document, fix),
-                            diagnostics=[diagnostic],
-                        ),
-                    )
+                        actions.append(
+                            CodeAction(
+                                title=title,
+                                kind=CodeActionKind.QuickFix,
+                                data=params.text_document.uri,
+                                edit=_create_workspace_edit(document, fix),
+                                diagnostics=[diagnostic],
+                            ),
+                        )
 
     # Add "Disable for this line" for every diagnostic.
-    if not params.context.only or CodeActionKind.QuickFix in params.context.only:
-        lines: list[str] | None = None
-        for diagnostic in params.context.diagnostics:
-            if diagnostic.source == "Ruff":
-                noqa_row = cast(DiagnosticData, diagnostic.data).get("noqa_row")
-                if noqa_row is not None:
-                    if lines is None:
-                        lines = document.lines
-                    line = lines[noqa_row - 1].rstrip("\r\n")
+    if settings.get("codeAction", {}).get("disableRuleComment", {}).get("enable", True):
+        if not params.context.only or CodeActionKind.QuickFix in params.context.only:
+            lines: list[str] | None = None
+            for diagnostic in params.context.diagnostics:
+                if diagnostic.source == "Ruff":
+                    noqa_row = cast(DiagnosticData, diagnostic.data).get("noqa_row")
+                    if noqa_row is not None:
+                        if lines is None:
+                            lines = document.lines
+                        line = lines[noqa_row - 1].rstrip("\r\n")
 
-                    match = NOQA_REGEX.search(line)
-                    # `foo  # noqa: OLD` -> `foo  # noqa: OLD,NEW`
-                    if match and match.group("codes") is not None:
-                        codes = match.group("codes") + f", {diagnostic.code}"
-                        start, end = match.start("codes"), match.end("codes")
-                        new_line = line[:start] + codes + line[end:]
-                    # `foo  # noqa` -> `foo  # noqa: NEW`
-                    elif match:
-                        end = match.end("noqa")
-                        new_line = line[:end] + f": {diagnostic.code}" + line[end:]
-                    # `foo` -> `foo  # noqa: NEW`
-                    else:
-                        new_line = f"{line}  # noqa: {diagnostic.code}"
-                    fix = Fix(
-                        message=None,
-                        applicability=None,
-                        edits=[
-                            Edit(
-                                content=new_line,
-                                location=Location(
-                                    row=noqa_row,
-                                    column=0,
-                                ),
-                                end_location=Location(
-                                    row=noqa_row,
-                                    column=len(line),
-                                ),
-                            )
-                        ],
-                    )
+                        match = NOQA_REGEX.search(line)
+                        if match and match.group("codes") is not None:
+                            # `foo  # noqa: OLD` -> `foo  # noqa: OLD,NEW`
+                            codes = match.group("codes") + f", {diagnostic.code}"
+                            start, end = match.start("codes"), match.end("codes")
+                            new_line = line[:start] + codes + line[end:]
+                        elif match:
+                            # `foo  # noqa` -> `foo  # noqa: NEW`
+                            end = match.end("noqa")
+                            new_line = line[:end] + f": {diagnostic.code}" + line[end:]
+                        else:
+                            # `foo` -> `foo  # noqa: NEW`
+                            new_line = f"{line}  # noqa: {diagnostic.code}"
+                        fix = Fix(
+                            message=None,
+                            applicability=None,
+                            edits=[
+                                Edit(
+                                    content=new_line,
+                                    location=Location(
+                                        row=noqa_row,
+                                        column=0,
+                                    ),
+                                    end_location=Location(
+                                        row=noqa_row,
+                                        column=len(line),
+                                    ),
+                                )
+                            ],
+                        )
 
-                    actions.append(
-                        CodeAction(
-                            title=f"Ruff: Disable {diagnostic.code} for this line",
-                            kind=CodeActionKind.QuickFix,
-                            data=params.text_document.uri,
-                            edit=_create_workspace_edit(document, fix),
-                            diagnostics=[diagnostic],
-                        ),
-                    )
+                        title = f"Ruff ({diagnostic.code}): Disable for this line"
+
+                        actions.append(
+                            CodeAction(
+                                title=title,
+                                kind=CodeActionKind.QuickFix,
+                                data=params.text_document.uri,
+                                edit=_create_workspace_edit(document, fix),
+                                diagnostics=[diagnostic],
+                            ),
+                        )
 
     return actions if actions else None
 
@@ -946,6 +912,7 @@ def _get_global_defaults() -> UserSettings:
         "interpreter": GLOBAL_SETTINGS.get("interpreter", [sys.executable]),
         "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "fromEnvironment"),
         "run": GLOBAL_SETTINGS.get("run", "onType"),
+        "codeAction": GLOBAL_SETTINGS.get("codeAction", {}),
         "organizeImports": GLOBAL_SETTINGS.get("organizeImports", True),
         "fixAll": GLOBAL_SETTINGS.get("fixAll", True),
     }

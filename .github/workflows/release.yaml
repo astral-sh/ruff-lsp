@@ -2,7 +2,7 @@ name: Release
 
 on:
   release:
-    types: [ published ]
+    types: [published]
 
 env:
   PYTHON_VERSION: "3.7"
