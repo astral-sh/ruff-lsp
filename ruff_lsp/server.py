@@ -30,6 +30,7 @@ from lsprotocol.types import (
     CodeActionKind,
     CodeActionOptions,
     CodeActionParams,
+    CodeDescription,
     Diagnostic,
     DiagnosticSeverity,
     DiagnosticTag,
@@ -275,8 +276,9 @@ def _parse_output(content: bytes) -> list[Diagnostic]:
         diagnostic = Diagnostic(
             range=Range(start=start, end=end),
             message=check.get("message"),
-            severity=_get_severity(check["code"]),
             code=check["code"],
+            code_description=_get_code_description(check.get("url")),
+            severity=_get_severity(check["code"]),
             source=TOOL_DISPLAY,
             data=DiagnosticData(
                 fix=_parse_fix(check.get("fix")),
@@ -288,6 +290,13 @@ def _parse_output(content: bytes) -> list[Diagnostic]:
         diagnostics.append(diagnostic)
 
     return diagnostics
+
+
+def _get_code_description(url: str | None) -> CodeDescription | None:
+    if url is None:
+        return None
+    else:
+        return CodeDescription(href=url)
 
 
 def _get_tags(code: str) -> list[DiagnosticTag] | None:
