@@ -12,7 +12,7 @@ cattrs==23.1.2
     # via lsprotocol
 exceptiongroup==1.1.1
     # via cattrs
-importlib-metadata==6.6.0
+importlib-metadata==6.7.0
     # via
     #   attrs
     #   typeguard
