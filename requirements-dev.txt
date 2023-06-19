@@ -22,7 +22,7 @@ exceptiongroup==1.1.1
     # via
     #   cattrs
     #   pytest
-importlib-metadata==6.6.0
+importlib-metadata==6.7.0
     # via
     #   attrs
     #   build
