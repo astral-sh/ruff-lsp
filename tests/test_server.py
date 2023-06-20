@@ -59,6 +59,9 @@ class TestServer(unittest.TestCase):
                     "diagnostics": [
                         {
                             "code": "F401",
+                            "codeDescription": {
+                                "href": "https://beta.ruff.rs/docs/rules/unused-import"
+                            },
                             "data": {
                                 "fix": {
                                     "applicability": "Automatic",
@@ -84,6 +87,9 @@ class TestServer(unittest.TestCase):
                         },
                         {
                             "code": "F821",
+                            "codeDescription": {
+                                "href": "https://beta.ruff.rs/docs/rules/undefined-name"
+                            },
                             "data": {"fix": None, "noqa_row": 3},
                             "message": "Undefined name `x`",
                             "range": {
@@ -142,6 +148,9 @@ class TestServer(unittest.TestCase):
                     "diagnostics": [
                         {
                             "code": "F401",
+                            "codeDescription": {
+                                "href": "https://beta.ruff.rs/docs/rules/unused-import"
+                            },
                             "data": {
                                 "fix": {
                                     "applicability": "Automatic",
@@ -167,6 +176,9 @@ class TestServer(unittest.TestCase):
                         },
                         {
                             "code": "F821",
+                            "codeDescription": {
+                                "href": "https://beta.ruff.rs/docs/rules/undefined-name"
+                            },
                             "data": {"fix": None, "noqa_row": 3},
                             "message": "Undefined name `x`",
                             "range": {

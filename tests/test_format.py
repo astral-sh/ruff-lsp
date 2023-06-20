@@ -20,7 +20,7 @@ original = """
 x = 1
 """
 
-expected = """NOT_YET_IMPLEMENTED_StmtAssign
+expected = """x = 1
 """
 
 
