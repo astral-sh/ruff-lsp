@@ -53,7 +53,7 @@ pip-tools==6.13.0
     # via ruff-lsp (pyproject.toml)
 platformdirs==3.7.0
     # via black
-pluggy==1.0.0
+pluggy==1.2.0
     # via pytest
 pygls==1.0.2
     # via ruff-lsp (pyproject.toml)
