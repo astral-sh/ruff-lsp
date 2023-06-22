@@ -32,7 +32,7 @@ importlib-metadata==6.7.0
     #   typeguard
 iniconfig==2.0.0
     # via pytest
-lsprotocol==2023.0.0a1
+lsprotocol==2023.0.0a2
     # via
     #   pygls
     #   ruff-lsp (pyproject.toml)
