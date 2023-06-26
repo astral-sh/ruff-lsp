@@ -59,7 +59,7 @@ pygls==1.0.2
     # via ruff-lsp (pyproject.toml)
 pyproject-hooks==1.0.0
     # via build
-pytest==7.3.2
+pytest==7.4.0
     # via
     #   pytest-asyncio
     #   ruff-lsp (pyproject.toml)
