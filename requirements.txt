@@ -26,7 +26,7 @@ ruff==0.0.275
     # via ruff-lsp (pyproject.toml)
 typeguard==3.0.2
     # via pygls
-typing-extensions==4.7.0
+typing-extensions==4.7.1
     # via
     #   cattrs
     #   importlib-metadata
