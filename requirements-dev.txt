@@ -76,7 +76,7 @@ tomli==2.0.1
     #   mypy
     #   pyproject-hooks
     #   pytest
-typed-ast==1.5.4
+typed-ast==1.5.5
     # via
     #   black
     #   mypy
