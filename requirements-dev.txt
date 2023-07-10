@@ -96,7 +96,7 @@ ujson==5.7.0
     # via python-lsp-jsonrpc
 wheel==0.40.0
     # via pip-tools
-zipp==3.15.0
+zipp==3.16.0
     # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
