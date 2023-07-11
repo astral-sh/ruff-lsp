@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: just install
       - name: Run checks
-        if: ${{ matrix.python-version == "3.11" }}
+        if: ${{ matrix.python-version == '3.11' }}
         run: just check
       - name: Run tests
         run: just test
