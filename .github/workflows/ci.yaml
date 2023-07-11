@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: just install
       - name: Run checks
-        if: ${{ matrix.python-version == "3.10" }}
+        if: ${{ matrix.python-version == "3.11" }}
         run: just check
       - name: Run tests
         run: just test
