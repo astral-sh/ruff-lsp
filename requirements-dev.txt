@@ -8,7 +8,7 @@ attrs==23.1.0
     # via
     #   cattrs
     #   lsprotocol
-black==23.3.0
+black==23.7.0
     # via ruff-lsp (pyproject.toml)
 build==0.10.0
     # via pip-tools

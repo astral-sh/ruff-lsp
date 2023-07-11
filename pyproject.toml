@@ -42,7 +42,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "black==23.3.0",
+  "black==23.7.0",
   "mypy==1.4.1",
   "pip-tools>=6.13.0,<7.0.0",
   "pytest>=7.3.1,<8.0.0",
