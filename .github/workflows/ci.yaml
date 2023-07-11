@@ -25,6 +25,7 @@ jobs:
       - name: Install dependencies
         run: just install
       - name: Run checks
+        if: ${{ matrix.python-version == "3.10" }}
         run: just check
       - name: Run tests
         run: just test
