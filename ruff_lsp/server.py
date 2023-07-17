@@ -323,7 +323,7 @@ NOQA_REGEX = re.compile(
     r"(?i:# (?:(?:ruff|flake8): )?(?P<noqa>noqa))"
     r"(?::\s?(?P<codes>([A-Z]+[0-9]+(?:[,\s]+)?)+))?"
 )
-CODE_REGEX = re.compile(r"[A-Z]{1,3}[0-9]{3}")
+CODE_REGEX = re.compile(r"[A-Z]+[0-9]+")
 
 
 @LSP_SERVER.feature(TEXT_DOCUMENT_HOVER)
