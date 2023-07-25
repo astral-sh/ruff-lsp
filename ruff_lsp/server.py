@@ -684,17 +684,17 @@ if os.environ.get("RUFF_BETA_INTERNAL"):
 
     @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
     async def format_document(
-        language_server: server.LanguageServer,
-        arguments: DocumentFormattingParams,
+        ls: server.LanguageServer,
+        params: DocumentFormattingParams,
     ) -> list[TextEdit] | None:
-        return await _format_document_impl(language_server, arguments)
+        return await _format_document_impl(ls, params)
 
 
 async def _format_document_impl(
     language_server: server.LanguageServer,
-    arguments: DocumentFormattingParams,
+    params: DocumentFormattingParams,
 ) -> list[TextEdit]:
-    uri = arguments.text_document.uri
+    uri = params.text_document.uri
     document = language_server.workspace.get_document(uri)
     result = await _run_subcommand_on_document(document, args=["format", "-"])
     return _result_to_edits(document, result)
