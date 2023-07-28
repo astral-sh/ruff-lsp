@@ -80,7 +80,7 @@ typed-ast==1.5.5
     # via
     #   black
     #   mypy
-typeguard==3.0.2
+typeguard==4.0.1
     # via pygls
 typing-extensions==4.7.1
     # via
