@@ -47,7 +47,7 @@ packaging==23.1
     #   black
     #   build
     #   pytest
-pathspec==0.11.1
+pathspec==0.11.2
     # via black
 pip-tools==6.14.0
     # via ruff-lsp (pyproject.toml)
