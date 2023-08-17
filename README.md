@@ -15,11 +15,8 @@ Enables Ruff to be used in any editor that supports the LSP, including [Neovim](
 
 For Visual Studio Code, check out the [Ruff VS Code extension](https://github.com/astral-sh/ruff-vscode).
 
-## Using as a Python LSP
-
-ruff-lsp only supports surfacing errors and providing actions to correct them, it does not support behaviors for
-code navigation or completion. It's recommended to use ruff-lsp alongside another Python LSP in order to get
-a complete experience including features like "go-to definition" or auto-complete.
+ruff-lsp supports surfacing Ruff diagnostics and providing Code Actions to fix them, but is intended to be used
+alongside another Python LSP in order to support features like navigation and autocompletion.
 
 ## Highlights
 
