@@ -36,7 +36,7 @@ lsprotocol==2023.0.0a2
     # via
     #   pygls
     #   ruff-lsp (pyproject.toml)
-mypy==1.4.1
+mypy==1.5.1
     # via ruff-lsp (pyproject.toml)
 mypy-extensions==1.0.0
     # via
