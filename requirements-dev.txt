@@ -14,7 +14,7 @@ build==0.10.0
     # via pip-tools
 cattrs==23.1.2
     # via lsprotocol
-click==8.1.6
+click==8.1.7
     # via
     #   black
     #   pip-tools
