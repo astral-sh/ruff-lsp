@@ -94,7 +94,7 @@ typing-extensions==4.7.1
     #   typeguard
 ujson==5.7.0
     # via python-lsp-jsonrpc
-wheel==0.41.1
+wheel==0.41.2
     # via pip-tools
 zipp==3.15.0
     # via importlib-metadata
