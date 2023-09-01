@@ -16,7 +16,7 @@ importlib-metadata==6.7.0
     # via
     #   attrs
     #   typeguard
-lsprotocol==2023.0.0a2
+lsprotocol==2023.0.0a3
     # via
     #   pygls
     #   ruff-lsp (pyproject.toml)
