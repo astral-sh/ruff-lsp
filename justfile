@@ -13,6 +13,9 @@ fmt:
   ruff format ./ruff_lsp ./tests
 
 check:
+  ruff format ./ruff_lsp ./tests
+  git diff HEAD | cat
+
   ruff check ./ruff_lsp ./tests
   ruff format --check ./ruff_lsp ./tests
   mypy ./ruff_lsp ./tests
