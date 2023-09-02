@@ -61,14 +61,14 @@ from ruff_lsp.utils import RunResult
 
 logger = logging.getLogger(__name__)
 
-ruff_lsp_debug = bool(os.environ.get("RUFF_LSP_DEBUG", False))
-ruff_beta_internal = bool(os.environ.get("RUFF_BETA_INTERNAL", False))
+RUFF_LSP_DEBUG = bool(os.environ.get("RUFF_LSP_DEBUG", False))
+RUFF_BETA_INTERNAL = bool(os.environ.get("RUFF_BETA_INTERNAL", False))
 
-if ruff_lsp_debug:
+if RUFF_LSP_DEBUG:
     log_file = Path(__file__).parent.parent.joinpath("ruff-lsp.log")
     logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)
     logger.info("RUFF_LSP_DEBUG is active")
-    if ruff_beta_internal:
+    if RUFF_BETA_INTERNAL:
         logger.info("RUFF_BETA_INTERNAL is active")
 
 
@@ -97,7 +97,7 @@ TOOL_MODULE = "ruff.exe" if sys.platform == "win32" else "ruff"
 TOOL_DISPLAY = "Ruff"
 
 # Arguments provided to every Ruff invocation.
-TOOL_ARGS = [
+CHECK_ARGS = [
     "--force-exclude",
     "--no-cache",
     "--no-fix",
@@ -108,7 +108,7 @@ TOOL_ARGS = [
 ]
 
 # Arguments that are not allowed to be passed to Ruff.
-TOOL_NON_ARGS = [
+UNSUPPORTED_ARGS = [
     # Arguments that enforce required behavior. These can be ignored with a warning.
     "--force-exclude",
     "--no-cache",
@@ -180,7 +180,7 @@ async def did_change(params: DidChangeTextDocumentParams) -> None:
 
 
 async def _lint_document_impl(document: workspace.Document) -> list[Diagnostic]:
-    result = await _run_tool_on_document(document)
+    result = await _run_check_on_document(document)
     if result is None:
         return []
     return _parse_output(result.stdout) if result.stdout else []
@@ -680,7 +680,7 @@ async def apply_organize_imports(arguments: tuple[TextDocument]):
     )
 
 
-if os.environ.get("RUFF_BETA_INTERNAL"):
+if RUFF_BETA_INTERNAL:
 
     @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
     async def format_document(
@@ -696,7 +696,7 @@ async def _format_document_impl(
 ) -> list[TextEdit]:
     uri = params.text_document.uri
     document = language_server.workspace.get_document(uri)
-    result = await _run_subcommand_on_document(document, args=["format", "-"])
+    result = await _run_format_on_document(document)
     return _result_to_edits(document, result)
 
 
@@ -705,7 +705,7 @@ async def _fix_document_impl(
     *,
     only: str | None = None,
 ) -> list[TextEdit]:
-    result = await _run_tool_on_document(document, extra_args=["--fix"], only=only)
+    result = await _run_check_on_document(document, extra_args=["--fix"], only=only)
     return _result_to_edits(document, result)
 
 
@@ -852,7 +852,7 @@ def initialize(params: InitializeParams) -> None:
     # Internal hidden beta feature. We want to have this in the code base, but we
     # don't want to expose it to users yet, hence the environment variable. You can
     # e.g. use this with VS Code by doing `RUFF_BETA_INTERNAL=1 code .`
-    # CLIENT_CAPABILITIES[TEXT_DOCUMENT_FORMATTING] = ruff_beta_internal
+    # CLIENT_CAPABILITIES[TEXT_DOCUMENT_FORMATTING] = RUFF_BETA_INTERNAL
 
     # Extract `settings` from the initialization options.
     workspace_settings: list[WorkspaceSettings] | WorkspaceSettings | None = (
@@ -1057,17 +1057,13 @@ def _executable_version(executable: str) -> str:
     return EXECUTABLE_VERSIONS[executable]
 
 
-async def _run_tool_on_document(
+async def _run_check_on_document(
     document: workspace.Document,
     *,
     extra_args: Sequence[str] = [],
     only: str | None = None,
 ) -> RunResult | None:
-    """Runs tool on the given document.
-
-    If `use_stdin` is `True` then contents of the document is passed to the tool via
-    stdin.
-    """
+    """Runs the Ruff `check` subcommand  on the given document."""
     if str(document.uri).startswith("vscode-notebook-cell"):
         # Skip notebook cells
         return None
@@ -1079,10 +1075,10 @@ async def _run_tool_on_document(
     settings = _get_settings_by_document(document)
 
     executable = _executable_path(settings)
-    argv: list[str] = TOOL_ARGS + list(extra_args)
+    argv: list[str] = CHECK_ARGS + list(extra_args)
 
     for arg in settings["args"]:
-        if arg in TOOL_NON_ARGS:
+        if arg in UNSUPPORTED_ARGS:
             log_to_output(f"Ignoring unsupported argument: {arg}")
         else:
             argv.append(arg)
@@ -1096,6 +1092,34 @@ async def _run_tool_on_document(
 
     # Provide the document filename.
     argv += ["--stdin-filename", document.path]
+
+    return await run_path(
+        executable,
+        argv,
+        cwd=settings["cwd"],
+        source=document.source,
+    )
+
+
+async def _run_format_on_document(document: workspace.Document) -> RunResult | None:
+    """Runs the Ruff `format` subcommand on the given document."""
+    if str(document.uri).startswith("vscode-notebook-cell"):
+        # Skip notebook cells
+        return None
+
+    if utils.is_stdlib_file(document.path):
+        log_warning(f"Skipping standard library file: {document.path}")
+        return None
+
+    settings = _get_settings_by_document(document)
+    executable = _executable_path(settings)
+    argv: list[str] = [
+        "format",
+        "--force-exclude",
+        "--quiet",
+        "--stdin-filename",
+        document.path,
+    ]
 
     return await run_path(
         executable,
