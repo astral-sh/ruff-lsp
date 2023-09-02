@@ -62,14 +62,14 @@ from ruff_lsp.utils import RunResult
 logger = logging.getLogger(__name__)
 
 RUFF_LSP_DEBUG = bool(os.environ.get("RUFF_LSP_DEBUG", False))
-RUFF_BETA_INTERNAL = bool(os.environ.get("RUFF_BETA_INTERNAL", False))
+RUFF_EXPERIMENTAL_FORMATTER = bool(os.environ.get("RUFF_EXPERIMENTAL_FORMATTER", False))
 
 if RUFF_LSP_DEBUG:
     log_file = Path(__file__).parent.parent.joinpath("ruff-lsp.log")
     logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)
     logger.info("RUFF_LSP_DEBUG is active")
-    if RUFF_BETA_INTERNAL:
-        logger.info("RUFF_BETA_INTERNAL is active")
+    if RUFF_EXPERIMENTAL_FORMATTER:
+        logger.info("RUFF_EXPERIMENTAL_FORMATTER is active")
 
 
 if sys.platform == "win32" and sys.version_info < (3, 8):
@@ -680,7 +680,7 @@ async def apply_organize_imports(arguments: tuple[TextDocument]):
     )
 
 
-if RUFF_BETA_INTERNAL:
+if RUFF_EXPERIMENTAL_FORMATTER:
 
     @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
     async def format_document(
@@ -851,8 +851,8 @@ def initialize(params: InitializeParams) -> None:
 
     # Internal hidden beta feature. We want to have this in the code base, but we
     # don't want to expose it to users yet, hence the environment variable. You can
-    # e.g. use this with VS Code by doing `RUFF_BETA_INTERNAL=1 code .`
-    # CLIENT_CAPABILITIES[TEXT_DOCUMENT_FORMATTING] = RUFF_BETA_INTERNAL
+    # e.g. use this with VS Code by doing `RUFF_EXPERIMENTAL_FORMATTER=1 code .`
+    # CLIENT_CAPABILITIES[TEXT_DOCUMENT_FORMATTING] = RUFF_EXPERIMENTAL_FORMATTER
 
     # Extract `settings` from the initialization options.
     workspace_settings: list[WorkspaceSettings] | WorkspaceSettings | None = (
