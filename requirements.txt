@@ -24,7 +24,7 @@ pygls==1.0.2
     # via ruff-lsp (pyproject.toml)
 ruff==0.0.287
     # via ruff-lsp (pyproject.toml)
-typeguard==3.0.2
+typeguard==4.1.2
     # via pygls
 typing-extensions==4.7.1
     # via
