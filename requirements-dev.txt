@@ -56,7 +56,7 @@ pytest-asyncio==0.21.1
     # via ruff-lsp (pyproject.toml)
 python-lsp-jsonrpc==1.0.0
     # via ruff-lsp (pyproject.toml)
-ruff==0.0.287
+ruff==0.0.288
     # via ruff-lsp (pyproject.toml)
 tomli==2.0.1
     # via
