@@ -40,7 +40,21 @@ alongside another Python LSP in order to support features like navigation and au
 pip install ruff-lsp
 ```
 
-From there, `ruff-lsp` can be used with any editor that supports the Language Server Protocol,
+### Community packages
+
+[An Alpine Linux package](https://pkgs.alpinelinux.org/packages?name=ruff-lsp)
+is available in the `testing` repository:
+
+    apk add ruff-lsp
+
+[An Arch Linux package](https://archlinux.org/packages/extra/any/ruff-lsp/) is
+available in the `Extra` repository:
+
+    pacman -S ruff-lsp
+
+## Setup
+
+Once installed, `ruff-lsp` can be used with any editor that supports the Language Server Protocol,
 including Neovim, Emacs, Sublime Text, and more.
 
 ### Example: Neovim
