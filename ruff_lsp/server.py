@@ -487,68 +487,6 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
 
     actions: list[CodeAction] = []
 
-    if settings["organizeImports"]:
-        # Add "Ruff: Organize Imports" as a supported action.
-        if not params.context.only or (
-            CodeActionKind.SourceOrganizeImports in params.context.only
-        ):
-            if CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE]:
-                actions.append(
-                    CodeAction(
-                        title="Ruff: Organize Imports",
-                        kind=CodeActionKind.SourceOrganizeImports,
-                        data=params.text_document.uri,
-                        edit=None,
-                        diagnostics=[],
-                    ),
-                )
-            else:
-                edits = await _fix_document_impl(document, only="I001")
-                if edits:
-                    actions.append(
-                        CodeAction(
-                            title="Ruff: Organize Imports",
-                            kind=CodeActionKind.SourceOrganizeImports,
-                            data=params.text_document.uri,
-                            edit=_create_workspace_edits(document, edits),
-                            diagnostics=[],
-                        ),
-                    )
-
-    if settings["fixAll"]:
-        # Add "Ruff: Fix All" as a supported action.
-        if not params.context.only or (
-            CodeActionKind.SourceFixAll in params.context.only
-        ):
-            if CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE]:
-                actions.append(
-                    CodeAction(
-                        title="Ruff: Fix All",
-                        kind=CodeActionKind.SourceFixAll,
-                        data=params.text_document.uri,
-                        edit=None,
-                        diagnostics=[],
-                    ),
-                )
-            else:
-                edits = await _fix_document_impl(document)
-                if edits:
-                    actions.append(
-                        CodeAction(
-                            title="Ruff: Fix All",
-                            kind=CodeActionKind.SourceFixAll,
-                            data=params.text_document.uri,
-                            edit=_create_workspace_edits(document, edits),
-                            diagnostics=[
-                                diagnostic
-                                for diagnostic in params.context.diagnostics
-                                if diagnostic.source == "Ruff"
-                                and cast(DiagnosticData, diagnostic.data).get("fix")
-                                is not None
-                            ],
-                        ),
-                    )
-
     # Add "Ruff: Autofix" for every fixable diagnostic.
     if settings.get("codeAction", {}).get("fixViolation", {}).get("enable", True):
         if not params.context.only or CodeActionKind.QuickFix in params.context.only:
@@ -628,6 +566,68 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                                 diagnostics=[diagnostic],
                             ),
                         )
+
+    if settings["organizeImports"]:
+        # Add "Ruff: Organize Imports" as a supported action.
+        if not params.context.only or (
+            CodeActionKind.SourceOrganizeImports in params.context.only
+        ):
+            if CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE]:
+                actions.append(
+                    CodeAction(
+                        title="Ruff: Organize Imports",
+                        kind=CodeActionKind.SourceOrganizeImports,
+                        data=params.text_document.uri,
+                        edit=None,
+                        diagnostics=[],
+                    ),
+                )
+            else:
+                edits = await _fix_document_impl(document, only="I001")
+                if edits:
+                    actions.append(
+                        CodeAction(
+                            title="Ruff: Organize Imports",
+                            kind=CodeActionKind.SourceOrganizeImports,
+                            data=params.text_document.uri,
+                            edit=_create_workspace_edits(document, edits),
+                            diagnostics=[],
+                        ),
+                    )
+
+    if settings["fixAll"]:
+        # Add "Ruff: Fix All" as a supported action.
+        if not params.context.only or (
+            CodeActionKind.SourceFixAll in params.context.only
+        ):
+            if CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE]:
+                actions.append(
+                    CodeAction(
+                        title="Ruff: Fix All",
+                        kind=CodeActionKind.SourceFixAll,
+                        data=params.text_document.uri,
+                        edit=None,
+                        diagnostics=[],
+                    ),
+                )
+            else:
+                edits = await _fix_document_impl(document)
+                if edits:
+                    actions.append(
+                        CodeAction(
+                            title="Ruff: Fix All",
+                            kind=CodeActionKind.SourceFixAll,
+                            data=params.text_document.uri,
+                            edit=_create_workspace_edits(document, edits),
+                            diagnostics=[
+                                diagnostic
+                                for diagnostic in params.context.diagnostics
+                                if diagnostic.source == "Ruff"
+                                and cast(DiagnosticData, diagnostic.data).get("fix")
+                                is not None
+                            ],
+                        ),
+                    )
 
     return actions if actions else None
 
