@@ -60,7 +60,7 @@ class TestServer(unittest.TestCase):
                         {
                             "code": "F401",
                             "codeDescription": {
-                                "href": "https://beta.ruff.rs/docs/rules/unused-import"
+                                "href": "https://docs.astral.sh/ruff/rules/unused-import"
                             },
                             "data": {
                                 "fix": {
@@ -88,7 +88,7 @@ class TestServer(unittest.TestCase):
                         {
                             "code": "F821",
                             "codeDescription": {
-                                "href": "https://beta.ruff.rs/docs/rules/undefined-name"
+                                "href": "https://docs.astral.sh/ruff/rules/undefined-name"
                             },
                             "data": {"fix": None, "noqa_row": 3},
                             "message": "Undefined name `x`",
@@ -149,7 +149,7 @@ class TestServer(unittest.TestCase):
                         {
                             "code": "F401",
                             "codeDescription": {
-                                "href": "https://beta.ruff.rs/docs/rules/unused-import"
+                                "href": "https://docs.astral.sh/ruff/rules/unused-import"
                             },
                             "data": {
                                 "fix": {
@@ -177,7 +177,7 @@ class TestServer(unittest.TestCase):
                         {
                             "code": "F821",
                             "codeDescription": {
-                                "href": "https://beta.ruff.rs/docs/rules/undefined-name"
+                                "href": "https://docs.astral.sh/ruff/rules/undefined-name"
                             },
                             "data": {"fix": None, "noqa_row": 3},
                             "message": "Undefined name `x`",
