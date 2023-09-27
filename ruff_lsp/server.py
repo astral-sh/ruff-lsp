@@ -682,20 +682,29 @@ async def apply_organize_imports(arguments: tuple[TextDocument]):
 
 if RUFF_EXPERIMENTAL_FORMATTER:
 
+    @LSP_SERVER.command("ruff.applyFormat")
+    async def apply_format(arguments: tuple[TextDocument]):
+        uri = arguments[0]["uri"]
+        text_document = LSP_SERVER.workspace.get_document(uri)
+        results = await _format_document_impl(text_document)
+        LSP_SERVER.apply_edit(
+            _create_workspace_edits(text_document, results),
+            "Ruff: Format document",
+        )
+
     @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
     async def format_document(
         ls: server.LanguageServer,
         params: DocumentFormattingParams,
     ) -> list[TextEdit] | None:
-        return await _format_document_impl(ls, params)
+        uri = params.text_document.uri
+        document = ls.workspace.get_document(uri)
+        return await _format_document_impl(document)
 
 
 async def _format_document_impl(
-    language_server: server.LanguageServer,
-    params: DocumentFormattingParams,
+    document: workspace.Document,
 ) -> list[TextEdit]:
-    uri = params.text_document.uri
-    document = language_server.workspace.get_document(uri)
     result = await _run_format_on_document(document)
     return _result_to_edits(document, result)
 
