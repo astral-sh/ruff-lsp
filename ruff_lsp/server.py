@@ -97,7 +97,9 @@ LSP_SERVER = server.LanguageServer(
 
 TOOL_MODULE = "ruff.exe" if sys.platform == "win32" else "ruff"
 TOOL_DISPLAY = "Ruff"
-VERSION_REQUIREMENT = SpecifierSet(">=0.0.291,<0.2.0")
+# Don't force users to upgrade ruff if they don't use the linter
+VERSION_REQUIREMENT_LINTER = SpecifierSet(">=0.0.274,<0.2.0")
+VERSION_REQUIREMENT_FORMATTER = SpecifierSet(">=0.0.291,<0.2.0")
 
 # Arguments provided to every Ruff invocation.
 CHECK_ARGS = [
@@ -349,7 +351,7 @@ async def hover(params: HoverParams) -> Hover | None:
         if start <= params.position.character < end:
             code = match.group()
             result = await _run_subcommand_on_document(
-                document, args=["--explain", code]
+                document, VERSION_REQUIREMENT_LINTER, args=["--explain", code]
             )
             if result.stdout:
                 return Hover(
@@ -1005,16 +1007,21 @@ def _get_settings_by_document(document: workspace.Document | None) -> WorkspaceS
 ###
 
 
-def _find_ruff_binary(settings: WorkspaceSettings) -> str:
+def _find_ruff_binary(
+    settings: WorkspaceSettings, version_requirement: SpecifierSet
+) -> str:
     """Returns the path to the executable, checking that is has the required minimum
     version."""
     executable = _find_ruff_binary_path(settings)
 
     # This call is cached so it should generally be free
     version = _executable_version(executable)
-    if not VERSION_REQUIREMENT.contains(version, prereleases=True):
-        message = f"ruff {VERSION_REQUIREMENT} required, but {executable} is {version}"
-        log_error(message)
+    if not version_requirement.contains(version, prereleases=True):
+        # Put the versions first because the pop-up is small
+        message = (
+            f"ruff {version_requirement} required, but {version} found at {executable}"
+        )
+        show_error(message)
         raise RuntimeError(message)
     log_to_output(f"Found ruff {version} at {executable}")
     return executable
@@ -1106,7 +1113,7 @@ async def _run_check_on_document(
 
     settings = _get_settings_by_document(document)
 
-    executable = _find_ruff_binary(settings)
+    executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_LINTER)
     argv: list[str] = CHECK_ARGS + list(extra_args)
 
     for arg in settings["args"]:
@@ -1142,7 +1149,7 @@ async def _run_format_on_document(document: workspace.Document) -> RunResult | N
         return None
 
     settings = _get_settings_by_document(document)
-    executable = _find_ruff_binary(settings)
+    executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_FORMATTER)
     argv: list[str] = [
         "format",
         "--force-exclude",
@@ -1160,12 +1167,15 @@ async def _run_format_on_document(document: workspace.Document) -> RunResult | N
 
 
 async def _run_subcommand_on_document(
-    document: workspace.Document, *, args: Sequence[str]
+    document: workspace.Document,
+    version_requirement: SpecifierSet,
+    *,
+    args: Sequence[str],
 ) -> RunResult:
     """Runs the tool subcommand on the given document."""
     settings = _get_settings_by_document(document)
 
-    executable = _find_ruff_binary(settings)
+    executable = _find_ruff_binary(settings, version_requirement)
     argv: list[str] = list(args)
     return await run_path(
         executable,
@@ -1184,10 +1194,10 @@ def log_to_output(message: str) -> None:
     LSP_SERVER.show_message_log(message, MessageType.Log)
 
 
-def log_error(message: str) -> None:
+def show_error(message: str) -> None:
+    """Show a pop-up with an error. Only use for critical errors."""
     LSP_SERVER.show_message_log(message, MessageType.Error)
-    if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["onError", "onWarning", "always"]:
-        LSP_SERVER.show_message(message, MessageType.Error)
+    LSP_SERVER.show_message(message, MessageType.Error)
 
 
 def log_warning(message: str) -> None:
