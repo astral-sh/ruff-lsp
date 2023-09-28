@@ -52,6 +52,7 @@ from lsprotocol.types import (
     TextEdit,
     WorkspaceEdit,
 )
+from packaging.specifiers import SpecifierSet, Version
 from pygls import server, uris, workspace
 from typing_extensions import TypedDict
 
@@ -81,7 +82,8 @@ if sys.platform == "win32" and sys.version_info < (3, 8):
 GLOBAL_SETTINGS: UserSettings = {}
 WORKSPACE_SETTINGS: dict[str, WorkspaceSettings] = {}
 INTERPRETER_PATHS: dict[str, str] = {}
-EXECUTABLE_VERSIONS: dict[str, str] = {}
+# path to last modified and version
+EXECUTABLE_VERSIONS: dict[str, tuple[float, Version]] = {}
 CLIENT_CAPABILITIES: dict[str, bool] = {
     CODE_ACTION_RESOLVE: True,
 }
@@ -95,6 +97,7 @@ LSP_SERVER = server.LanguageServer(
 
 TOOL_MODULE = "ruff.exe" if sys.platform == "win32" else "ruff"
 TOOL_DISPLAY = "Ruff"
+VERSION_REQUIREMENT = SpecifierSet(">=0.0.291,<0.2.0")
 
 # Arguments provided to every Ruff invocation.
 CHECK_ARGS = [
@@ -1002,7 +1005,22 @@ def _get_settings_by_document(document: workspace.Document | None) -> WorkspaceS
 ###
 
 
-def _executable_path(settings: WorkspaceSettings) -> str:
+def _find_ruff_binary(settings: WorkspaceSettings) -> str:
+    """Returns the path to the executable, checking that is has the required minimum
+    version."""
+    executable = _find_ruff_binary_path(settings)
+
+    # This call is cached so it should generally be free
+    version = _executable_version(executable)
+    if not VERSION_REQUIREMENT.contains(version, prereleases=True):
+        message = f"ruff {VERSION_REQUIREMENT} required, but {executable} is {version}"
+        log_error(message)
+        raise RuntimeError(message)
+    log_to_output(f"Found ruff {version} at {executable}")
+    return executable
+
+
+def _find_ruff_binary_path(settings: WorkspaceSettings) -> str:
     """Returns the path to the executable."""
     bundle = get_bundle()
 
@@ -1057,13 +1075,18 @@ def _executable_path(settings: WorkspaceSettings) -> str:
     return path
 
 
-def _executable_version(executable: str) -> str:
+def _executable_version(executable: str) -> Version:
     """Returns the version of the executable."""
-    if executable not in EXECUTABLE_VERSIONS:
+    # If the user change the file (e.g. `pip install -U ruff`), invalidate the cache
+    modified = Path(executable).stat().st_mtime
+    if (
+        executable not in EXECUTABLE_VERSIONS
+        or EXECUTABLE_VERSIONS[executable][0] != modified
+    ):
         version = utils.version(executable)
         log_to_output(f"Inferred version {version} for: {executable}")
-        EXECUTABLE_VERSIONS[executable] = version
-    return EXECUTABLE_VERSIONS[executable]
+        EXECUTABLE_VERSIONS[executable] = (modified, version)
+    return EXECUTABLE_VERSIONS[executable][1]
 
 
 async def _run_check_on_document(
@@ -1083,7 +1106,7 @@ async def _run_check_on_document(
 
     settings = _get_settings_by_document(document)
 
-    executable = _executable_path(settings)
+    executable = _find_ruff_binary(settings)
     argv: list[str] = CHECK_ARGS + list(extra_args)
 
     for arg in settings["args"]:
@@ -1095,9 +1118,7 @@ async def _run_check_on_document(
     # If we're trying to run a single rule, add it to the command line, and disable
     # all other rules (if the Ruff version is sufficiently recent).
     if only:
-        if _executable_version(executable) >= "0.0.198":
-            argv += ["--extend-ignore", "ALL"]
-        argv += ["--extend-select", only]
+        argv += ["--extend-ignore", "ALL", "--extend-select", only]
 
     # Provide the document filename.
     argv += ["--stdin-filename", document.path]
@@ -1121,7 +1142,7 @@ async def _run_format_on_document(document: workspace.Document) -> RunResult | N
         return None
 
     settings = _get_settings_by_document(document)
-    executable = _executable_path(settings)
+    executable = _find_ruff_binary(settings)
     argv: list[str] = [
         "format",
         "--force-exclude",
@@ -1144,7 +1165,7 @@ async def _run_subcommand_on_document(
     """Runs the tool subcommand on the given document."""
     settings = _get_settings_by_document(document)
 
-    executable = _executable_path(settings)
+    executable = _find_ruff_binary(settings)
     argv: list[str] = list(args)
     return await run_path(
         executable,

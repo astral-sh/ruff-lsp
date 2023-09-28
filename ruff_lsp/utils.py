@@ -9,6 +9,8 @@ import subprocess
 import sys
 from typing import Any
 
+from packaging.version import Version
+
 
 def as_list(content: Any | list[Any] | tuple[Any, ...]) -> list[Any]:
     """Ensures we always get a list"""
@@ -57,9 +59,11 @@ def scripts(interpreter: str) -> str:
     )
 
 
-def version(executable: str) -> str:
+def version(executable: str) -> Version:
     """Returns the version of the executable at the given path."""
-    return subprocess.check_output([executable, "--version"]).decode().strip()
+    output = subprocess.check_output([executable, "--version"]).decode().strip()
+    version = output.replace("ruff ", "")  # no removeprefix in 3.7 :/
+    return Version(version)
 
 
 class RunResult:
