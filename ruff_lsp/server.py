@@ -11,7 +11,7 @@ import shutil
 import sys
 import sysconfig
 from pathlib import Path
-from typing import Sequence, cast
+from typing import NamedTuple, Sequence, cast
 
 from lsprotocol import validators
 from lsprotocol.types import (
@@ -82,8 +82,15 @@ if sys.platform == "win32" and sys.version_info < (3, 8):
 GLOBAL_SETTINGS: UserSettings = {}
 WORKSPACE_SETTINGS: dict[str, WorkspaceSettings] = {}
 INTERPRETER_PATHS: dict[str, str] = {}
-# path to last modified and version
-EXECUTABLE_VERSIONS: dict[str, tuple[float, Version]] = {}
+
+
+class VersionModified(NamedTuple):
+    version: Version
+    """Last modified of the executable"""
+    modified: float
+
+
+EXECUTABLE_VERSIONS: dict[str, VersionModified] = {}
 CLIENT_CAPABILITIES: dict[str, bool] = {
     CODE_ACTION_RESOLVE: True,
 }
@@ -1088,12 +1095,12 @@ def _executable_version(executable: str) -> Version:
     modified = Path(executable).stat().st_mtime
     if (
         executable not in EXECUTABLE_VERSIONS
-        or EXECUTABLE_VERSIONS[executable][0] != modified
+        or EXECUTABLE_VERSIONS[executable].modified != modified
     ):
         version = utils.version(executable)
         log_to_output(f"Inferred version {version} for: {executable}")
-        EXECUTABLE_VERSIONS[executable] = (modified, version)
-    return EXECUTABLE_VERSIONS[executable][1]
+        EXECUTABLE_VERSIONS[executable] = VersionModified(version, modified)
+    return EXECUTABLE_VERSIONS[executable].version
 
 
 async def _run_check_on_document(
