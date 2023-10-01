@@ -105,7 +105,7 @@ LSP_SERVER = server.LanguageServer(
 TOOL_MODULE = "ruff.exe" if sys.platform == "win32" else "ruff"
 TOOL_DISPLAY = "Ruff"
 # Don't force users to upgrade ruff if they don't use the linter
-VERSION_REQUIREMENT_LINTER = SpecifierSet(">=0.0.274,<0.2.0")
+VERSION_REQUIREMENT_LINTER = SpecifierSet(">=0.0.189,<0.2.0")
 VERSION_REQUIREMENT_FORMATTER = SpecifierSet(">=0.0.291,<0.2.0")
 
 # Arguments provided to every Ruff invocation.
