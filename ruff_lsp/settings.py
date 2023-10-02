@@ -83,11 +83,11 @@ def lint_args(settings: UserSettings) -> list[str]:
         return []
 
 
-def lint_run(settings: UserSettings, default: Run) -> Run:
+def lint_run(settings: UserSettings) -> Run:
     """Get the `lint.run` setting from the user settings."""
     if "lint" in settings and "run" in settings["lint"]:
         return settings["lint"]["run"]
     elif "run" in settings:
         return settings["run"]
     else:
-        return default
+        return "onType"
