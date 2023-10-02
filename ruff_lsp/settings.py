@@ -2,15 +2,14 @@ from __future__ import annotations
 
 from typing_extensions import Literal, TypedDict
 
+Run = Literal["onSave", "onType"]
+
 
 class UserSettings(TypedDict, total=False):
     """Settings for the Ruff Language Server."""
 
     logLevel: Literal["error", "warning", "info", "debug"]
     """The log level for the Ruff server. Defaults to "error"."""
-
-    args: list[str]
-    """Additional command-line arguments to pass to `ruff`."""
 
     path: list[str]
     """Path to a custom `ruff` executable."""
@@ -21,9 +20,6 @@ class UserSettings(TypedDict, total=False):
     importStrategy: Literal["fromEnvironment", "useBundled"]
     """Strategy for loading the `ruff` executable."""
 
-    run: Literal["onSave", "onType"]
-    """Run Ruff on every keystroke (`onType`) or on save (`onSave`)."""
-
     codeAction: CodeActions
     """Settings for the `source.codeAction` capability."""
 
@@ -32,6 +28,17 @@ class UserSettings(TypedDict, total=False):
 
     fixAll: bool
     """Whether to register Ruff as capable of handling `source.fixAll`."""
+
+    lint: Lint
+    """Settings specific to lint capabilities."""
+
+    # Deprecated: use `lint.args` instead.
+    args: list[str]
+    """Additional command-line arguments to pass to `ruff check`."""
+
+    # Deprecated: use `lint.run` instead.
+    run: Run
+    """Run Ruff on every keystroke (`onType`) or on save (`onSave`)."""
 
 
 class WorkspaceSettings(TypedDict, UserSettings):
@@ -56,3 +63,31 @@ class CodeActions(TypedDict, total=False):
 class CodeAction(TypedDict, total=False):
     enable: bool
     """Whether to enable the code action."""
+
+
+class Lint(TypedDict, total=False):
+    args: list[str]
+    """Additional command-line arguments to pass to `ruff check`."""
+
+    run: Run
+    """Run Ruff on every keystroke (`onType`) or on save (`onSave`)."""
+
+
+def lint_args(settings: UserSettings) -> list[str]:
+    """Get the `lint.args` setting from the user settings."""
+    if "lint" in settings and "args" in settings["lint"]:
+        return settings["lint"]["args"]
+    elif "args" in settings:
+        return settings["args"]
+    else:
+        return []
+
+
+def lint_run(settings: UserSettings, default: Run) -> Run:
+    """Get the `lint.run` setting from the user settings."""
+    if "lint" in settings and "run" in settings["lint"]:
+        return settings["lint"]["run"]
+    elif "run" in settings:
+        return settings["run"]
+    else:
+        return default
