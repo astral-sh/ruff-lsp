@@ -104,9 +104,11 @@ LSP_SERVER = server.LanguageServer(
 
 TOOL_MODULE = "ruff.exe" if sys.platform == "win32" else "ruff"
 TOOL_DISPLAY = "Ruff"
-# Don't force users to upgrade ruff if they don't use the linter
-VERSION_REQUIREMENT_LINTER = SpecifierSet(">=0.0.189,<0.2.0")
+
+# Require at least Ruff v0.0.291 for formatting, but allow older versions for linting.
 VERSION_REQUIREMENT_FORMATTER = SpecifierSet(">=0.0.291,<0.2.0")
+VERSION_REQUIREMENT_LINTER = SpecifierSet(">=0.0.189,<0.2.0")
+VERSION_REQUIREMENT_ALL_SELECTOR = SpecifierSet(">=0.0.198,<0.2.0")
 
 # Arguments provided to every Ruff invocation.
 CHECK_ARGS = [
@@ -1014,24 +1016,32 @@ def _get_settings_by_document(document: workspace.Document | None) -> WorkspaceS
 ###
 
 
+class Executable(NamedTuple):
+    path: str
+    """The path to the executable."""
+
+    version: Version
+    """The version of the executable."""
+
+
 def _find_ruff_binary(
     settings: WorkspaceSettings, version_requirement: SpecifierSet
-) -> str:
-    """Returns the path to the executable, checking that is has the required minimum
-    version."""
-    executable = _find_ruff_binary_path(settings)
+) -> Executable:
+    """Returns the executable along with its version.
 
-    # This call is cached so it should generally be free
-    version = _executable_version(executable)
+    If the executable doesn't meet the version requirement, raises a RuntimeError and
+    displays an error message.
+    """
+    path = _find_ruff_binary_path(settings)
+
+    version = _executable_version(path)
     if not version_requirement.contains(version, prereleases=True):
-        # Put the versions first because the pop-up is small
-        message = (
-            f"ruff {version_requirement} required, but {version} found at {executable}"
-        )
+        message = f"Ruff {version_requirement} required, but found {version} at {path}"
         show_error(message)
         raise RuntimeError(message)
-    log_to_output(f"Found ruff {version} at {executable}")
-    return executable
+    log_to_output(f"Found ruff {version} at {path}")
+
+    return Executable(path, version)
 
 
 def _find_ruff_binary_path(settings: WorkspaceSettings) -> str:
@@ -1132,13 +1142,17 @@ async def _run_check_on_document(
     # If we're trying to run a single rule, add it to the command line, and disable
     # all other rules (if the Ruff version is sufficiently recent).
     if only:
-        argv += ["--extend-ignore", "ALL", "--extend-select", only]
+        if VERSION_REQUIREMENT_ALL_SELECTOR.contains(
+            executable.version, prereleases=True
+        ):
+            argv += ["--extend-ignore", "ALL"]
+        argv += ["--extend-select", only]
 
     # Provide the document filename.
     argv += ["--stdin-filename", document.path]
 
     return await run_path(
-        executable,
+        executable.path,
         argv,
         cwd=settings["cwd"],
         source=document.source,
@@ -1166,7 +1180,7 @@ async def _run_format_on_document(document: workspace.Document) -> RunResult | N
     ]
 
     return await run_path(
-        executable,
+        executable.path,
         argv,
         cwd=settings["cwd"],
         source=document.source,
@@ -1185,7 +1199,7 @@ async def _run_subcommand_on_document(
     executable = _find_ruff_binary(settings, version_requirement)
     argv: list[str] = list(args)
     return await run_path(
-        executable,
+        executable.path,
         argv,
         cwd=settings["cwd"],
         source=document.source,
