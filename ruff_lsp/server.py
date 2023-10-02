@@ -57,7 +57,12 @@ from pygls import server, uris, workspace
 from typing_extensions import TypedDict
 
 from ruff_lsp import __version__, utils
-from ruff_lsp.settings import UserSettings, WorkspaceSettings
+from ruff_lsp.settings import (
+    UserSettings,
+    WorkspaceSettings,
+    lint_args,
+    lint_run,
+)
 from ruff_lsp.utils import RunResult
 
 logger = logging.getLogger(__name__)
@@ -179,7 +184,7 @@ def did_close(params: DidCloseTextDocumentParams) -> None:
 async def did_save(params: DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    if _get_settings_by_document(document).get("run", "onSave") == "onSave":
+    if lint_run(_get_settings_by_document(document), "onSave") == "onSave":
         diagnostics: list[Diagnostic] = await _lint_document_impl(document)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
@@ -188,7 +193,7 @@ async def did_save(params: DidSaveTextDocumentParams) -> None:
 async def did_change(params: DidChangeTextDocumentParams) -> None:
     """LSP handler for textDocument/didChange request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    if _get_settings_by_document(document).get("run", "onType") == "onType":
+    if lint_run(_get_settings_by_document(document), "onType") == "onType":
         diagnostics: list[Diagnostic] = await _lint_document_impl(document)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
@@ -938,15 +943,18 @@ def _supports_code_action_resolve(capabilities: ClientCapabilities) -> bool:
 
 def _get_global_defaults() -> UserSettings:
     return {
-        "logLevel": GLOBAL_SETTINGS.get("logLevel", "error"),
-        "args": GLOBAL_SETTINGS.get("args", []),
-        "path": GLOBAL_SETTINGS.get("path", []),
-        "interpreter": GLOBAL_SETTINGS.get("interpreter", [sys.executable]),
-        "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "fromEnvironment"),
-        "run": GLOBAL_SETTINGS.get("run", "onType"),
         "codeAction": GLOBAL_SETTINGS.get("codeAction", {}),
-        "organizeImports": GLOBAL_SETTINGS.get("organizeImports", True),
         "fixAll": GLOBAL_SETTINGS.get("fixAll", True),
+        "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "fromEnvironment"),
+        "interpreter": GLOBAL_SETTINGS.get("interpreter", [sys.executable]),
+        "lint": GLOBAL_SETTINGS.get("lint", {}),
+        "logLevel": GLOBAL_SETTINGS.get("logLevel", "error"),
+        "organizeImports": GLOBAL_SETTINGS.get("organizeImports", True),
+        "path": GLOBAL_SETTINGS.get("path", []),
+        # Deprecated: use `lint.args` instead.
+        "args": GLOBAL_SETTINGS.get("args", []),
+        # Deprecated: use `lint.run` instead.
+        "run": GLOBAL_SETTINGS.get("run", "onType"),
     }
 
 
@@ -993,7 +1001,9 @@ def _get_document_key(document: workspace.Document) -> str | None:
     return None
 
 
-def _get_settings_by_document(document: workspace.Document | None) -> WorkspaceSettings:
+def _get_settings_by_document(
+    document: workspace.Document | None,
+) -> WorkspaceSettings:
     if document is None or document.path is None:
         return list(WORKSPACE_SETTINGS.values())[0]
 
@@ -1133,7 +1143,7 @@ async def _run_check_on_document(
     executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_LINTER)
     argv: list[str] = CHECK_ARGS + list(extra_args)
 
-    for arg in settings["args"]:
+    for arg in lint_args(settings):
         if arg in UNSUPPORTED_ARGS:
             log_to_output(f"Ignoring unsupported argument: {arg}")
         else:
