@@ -32,6 +32,9 @@ class UserSettings(TypedDict, total=False):
     lint: Lint
     """Settings specific to lint capabilities."""
 
+    format: Format
+    """Settings specific to format capabilities."""
+
     # Deprecated: use `lint.args` instead.
     args: list[str]
     """Additional command-line arguments to pass to `ruff check`."""
@@ -71,6 +74,11 @@ class Lint(TypedDict, total=False):
 
     run: Run
     """Run Ruff on every keystroke (`onType`) or on save (`onSave`)."""
+
+
+class Format(TypedDict, total=False):
+    args: list[str]
+    """Additional command-line arguments to pass to `ruff format`."""
 
 
 def lint_args(settings: UserSettings) -> list[str]:

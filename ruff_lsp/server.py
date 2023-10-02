@@ -126,8 +126,8 @@ CHECK_ARGS = [
     "-",
 ]
 
-# Arguments that are not allowed to be passed to Ruff.
-UNSUPPORTED_ARGS = [
+# Arguments that are not allowed to be passed to `ruff check`.
+UNSUPPORTED_CHECK_ARGS = [
     # Arguments that enforce required behavior. These can be ignored with a warning.
     "--force-exclude",
     "--no-cache",
@@ -156,6 +156,22 @@ UNSUPPORTED_ARGS = [
     # Arguments that are not supported at all, and will error when provided.
     # "--stdin-filename",
     # "--format",
+]
+
+# Arguments that are not allowed to be passed to `ruff format`.
+UNSUPPORTED_FORMAT_ARGS = [
+    # Arguments that enforce required behavior. These can be ignored with a warning.
+    "--force-exclude",
+    "--quiet",
+    # Arguments that contradict the required behavior. These can be ignored with a
+    # warning.
+    "-h",
+    "--help",
+    "--no-force-exclude",
+    "--silent",
+    "--verbose",
+    # Arguments that are not supported at all, and will error when provided.
+    # "--stdin-filename",
 ]
 
 
@@ -948,6 +964,7 @@ def _get_global_defaults() -> UserSettings:
         "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "fromEnvironment"),
         "interpreter": GLOBAL_SETTINGS.get("interpreter", [sys.executable]),
         "lint": GLOBAL_SETTINGS.get("lint", {}),
+        "format": GLOBAL_SETTINGS.get("format", {}),
         "logLevel": GLOBAL_SETTINGS.get("logLevel", "error"),
         "organizeImports": GLOBAL_SETTINGS.get("organizeImports", True),
         "path": GLOBAL_SETTINGS.get("path", []),
@@ -1150,7 +1167,7 @@ async def _run_check_on_document(
     argv: list[str] = CHECK_ARGS + list(extra_args)
 
     for arg in lint_args(settings):
-        if arg in UNSUPPORTED_ARGS:
+        if arg in UNSUPPORTED_CHECK_ARGS:
             log_to_output(f"Ignoring unsupported argument: {arg}")
         else:
             argv.append(arg)
@@ -1194,6 +1211,12 @@ async def _run_format_on_document(document: workspace.Document) -> RunResult | N
         "--stdin-filename",
         document.path,
     ]
+
+    for arg in settings.get("format", {}).get("args", []):
+        if arg in UNSUPPORTED_FORMAT_ARGS:
+            log_to_output(f"Ignoring unsupported argument: {arg}")
+        else:
+            argv.append(arg)
 
     return await run_path(
         executable.path,
