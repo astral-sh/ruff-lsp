@@ -11,7 +11,7 @@ import shutil
 import sys
 import sysconfig
 from pathlib import Path
-from typing import Sequence, cast
+from typing import NamedTuple, Sequence, cast
 
 from lsprotocol import validators
 from lsprotocol.types import (
@@ -52,6 +52,7 @@ from lsprotocol.types import (
     TextEdit,
     WorkspaceEdit,
 )
+from packaging.specifiers import SpecifierSet, Version
 from pygls import server, uris, workspace
 from typing_extensions import TypedDict
 
@@ -81,7 +82,15 @@ if sys.platform == "win32" and sys.version_info < (3, 8):
 GLOBAL_SETTINGS: UserSettings = {}
 WORKSPACE_SETTINGS: dict[str, WorkspaceSettings] = {}
 INTERPRETER_PATHS: dict[str, str] = {}
-EXECUTABLE_VERSIONS: dict[str, str] = {}
+
+
+class VersionModified(NamedTuple):
+    version: Version
+    """Last modified of the executable"""
+    modified: float
+
+
+EXECUTABLE_VERSIONS: dict[str, VersionModified] = {}
 CLIENT_CAPABILITIES: dict[str, bool] = {
     CODE_ACTION_RESOLVE: True,
 }
@@ -95,6 +104,11 @@ LSP_SERVER = server.LanguageServer(
 
 TOOL_MODULE = "ruff.exe" if sys.platform == "win32" else "ruff"
 TOOL_DISPLAY = "Ruff"
+
+# Require at least Ruff v0.0.291 for formatting, but allow older versions for linting.
+VERSION_REQUIREMENT_FORMATTER = SpecifierSet(">=0.0.291,<0.2.0")
+VERSION_REQUIREMENT_LINTER = SpecifierSet(">=0.0.189,<0.2.0")
+VERSION_REQUIREMENT_ALL_SELECTOR = SpecifierSet(">=0.0.198,<0.2.0")
 
 # Arguments provided to every Ruff invocation.
 CHECK_ARGS = [
@@ -346,7 +360,7 @@ async def hover(params: HoverParams) -> Hover | None:
         if start <= params.position.character < end:
             code = match.group()
             result = await _run_subcommand_on_document(
-                document, args=["--explain", code]
+                document, VERSION_REQUIREMENT_LINTER, args=["--explain", code]
             )
             if result.stdout:
                 return Hover(
@@ -1002,7 +1016,35 @@ def _get_settings_by_document(document: workspace.Document | None) -> WorkspaceS
 ###
 
 
-def _executable_path(settings: WorkspaceSettings) -> str:
+class Executable(NamedTuple):
+    path: str
+    """The path to the executable."""
+
+    version: Version
+    """The version of the executable."""
+
+
+def _find_ruff_binary(
+    settings: WorkspaceSettings, version_requirement: SpecifierSet
+) -> Executable:
+    """Returns the executable along with its version.
+
+    If the executable doesn't meet the version requirement, raises a RuntimeError and
+    displays an error message.
+    """
+    path = _find_ruff_binary_path(settings)
+
+    version = _executable_version(path)
+    if not version_requirement.contains(version, prereleases=True):
+        message = f"Ruff {version_requirement} required, but found {version} at {path}"
+        show_error(message)
+        raise RuntimeError(message)
+    log_to_output(f"Found ruff {version} at {path}")
+
+    return Executable(path, version)
+
+
+def _find_ruff_binary_path(settings: WorkspaceSettings) -> str:
     """Returns the path to the executable."""
     bundle = get_bundle()
 
@@ -1057,13 +1099,18 @@ def _executable_path(settings: WorkspaceSettings) -> str:
     return path
 
 
-def _executable_version(executable: str) -> str:
+def _executable_version(executable: str) -> Version:
     """Returns the version of the executable."""
-    if executable not in EXECUTABLE_VERSIONS:
+    # If the user change the file (e.g. `pip install -U ruff`), invalidate the cache
+    modified = Path(executable).stat().st_mtime
+    if (
+        executable not in EXECUTABLE_VERSIONS
+        or EXECUTABLE_VERSIONS[executable].modified != modified
+    ):
         version = utils.version(executable)
         log_to_output(f"Inferred version {version} for: {executable}")
-        EXECUTABLE_VERSIONS[executable] = version
-    return EXECUTABLE_VERSIONS[executable]
+        EXECUTABLE_VERSIONS[executable] = VersionModified(version, modified)
+    return EXECUTABLE_VERSIONS[executable].version
 
 
 async def _run_check_on_document(
@@ -1083,7 +1130,7 @@ async def _run_check_on_document(
 
     settings = _get_settings_by_document(document)
 
-    executable = _executable_path(settings)
+    executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_LINTER)
     argv: list[str] = CHECK_ARGS + list(extra_args)
 
     for arg in settings["args"]:
@@ -1095,7 +1142,9 @@ async def _run_check_on_document(
     # If we're trying to run a single rule, add it to the command line, and disable
     # all other rules (if the Ruff version is sufficiently recent).
     if only:
-        if _executable_version(executable) >= "0.0.198":
+        if VERSION_REQUIREMENT_ALL_SELECTOR.contains(
+            executable.version, prereleases=True
+        ):
             argv += ["--extend-ignore", "ALL"]
         argv += ["--extend-select", only]
 
@@ -1103,7 +1152,7 @@ async def _run_check_on_document(
     argv += ["--stdin-filename", document.path]
 
     return await run_path(
-        executable,
+        executable.path,
         argv,
         cwd=settings["cwd"],
         source=document.source,
@@ -1121,7 +1170,7 @@ async def _run_format_on_document(document: workspace.Document) -> RunResult | N
         return None
 
     settings = _get_settings_by_document(document)
-    executable = _executable_path(settings)
+    executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_FORMATTER)
     argv: list[str] = [
         "format",
         "--force-exclude",
@@ -1131,7 +1180,7 @@ async def _run_format_on_document(document: workspace.Document) -> RunResult | N
     ]
 
     return await run_path(
-        executable,
+        executable.path,
         argv,
         cwd=settings["cwd"],
         source=document.source,
@@ -1139,15 +1188,18 @@ async def _run_format_on_document(document: workspace.Document) -> RunResult | N
 
 
 async def _run_subcommand_on_document(
-    document: workspace.Document, *, args: Sequence[str]
+    document: workspace.Document,
+    version_requirement: SpecifierSet,
+    *,
+    args: Sequence[str],
 ) -> RunResult:
     """Runs the tool subcommand on the given document."""
     settings = _get_settings_by_document(document)
 
-    executable = _executable_path(settings)
+    executable = _find_ruff_binary(settings, version_requirement)
     argv: list[str] = list(args)
     return await run_path(
-        executable,
+        executable.path,
         argv,
         cwd=settings["cwd"],
         source=document.source,
@@ -1163,10 +1215,10 @@ def log_to_output(message: str) -> None:
     LSP_SERVER.show_message_log(message, MessageType.Log)
 
 
-def log_error(message: str) -> None:
+def show_error(message: str) -> None:
+    """Show a pop-up with an error. Only use for critical errors."""
     LSP_SERVER.show_message_log(message, MessageType.Error)
-    if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["onError", "onWarning", "always"]:
-        LSP_SERVER.show_message(message, MessageType.Error)
+    LSP_SERVER.show_message(message, MessageType.Error)
 
 
 def log_warning(message: str) -> None:

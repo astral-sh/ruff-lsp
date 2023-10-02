@@ -1,8 +1,8 @@
 default: fmt check
 
 lock:
-  pip-compile --resolver=backtracking --upgrade -o requirements.txt pyproject.toml
-  pip-compile --resolver=backtracking --upgrade --extra dev -o requirements-dev.txt pyproject.toml
+  pip-compile --resolver=backtracking --generate-hashes --upgrade -o requirements.txt pyproject.toml
+  pip-compile --resolver=backtracking --generate-hashes --upgrade --extra dev -o requirements-dev.txt pyproject.toml
 
 install:
   pip install --no-deps -r requirements.txt
