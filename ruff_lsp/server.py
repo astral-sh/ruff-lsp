@@ -184,7 +184,7 @@ def did_close(params: DidCloseTextDocumentParams) -> None:
 async def did_save(params: DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    if lint_run(_get_settings_by_document(document), "onSave") == "onSave":
+    if lint_run(_get_settings_by_document(document)) in ("onType", "onSave"):
         diagnostics: list[Diagnostic] = await _lint_document_impl(document)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
@@ -193,7 +193,7 @@ async def did_save(params: DidSaveTextDocumentParams) -> None:
 async def did_change(params: DidChangeTextDocumentParams) -> None:
     """LSP handler for textDocument/didChange request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    if lint_run(_get_settings_by_document(document), "onType") == "onType":
+    if lint_run(_get_settings_by_document(document)) == "onType":
         diagnostics: list[Diagnostic] = await _lint_document_impl(document)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
@@ -942,7 +942,7 @@ def _supports_code_action_resolve(capabilities: ClientCapabilities) -> bool:
 
 
 def _get_global_defaults() -> UserSettings:
-    return {
+    settings: UserSettings = {
         "codeAction": GLOBAL_SETTINGS.get("codeAction", {}),
         "fixAll": GLOBAL_SETTINGS.get("fixAll", True),
         "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "fromEnvironment"),
@@ -951,11 +951,17 @@ def _get_global_defaults() -> UserSettings:
         "logLevel": GLOBAL_SETTINGS.get("logLevel", "error"),
         "organizeImports": GLOBAL_SETTINGS.get("organizeImports", True),
         "path": GLOBAL_SETTINGS.get("path", []),
-        # Deprecated: use `lint.args` instead.
-        "args": GLOBAL_SETTINGS.get("args", []),
-        # Deprecated: use `lint.run` instead.
-        "run": GLOBAL_SETTINGS.get("run", "onType"),
     }
+
+    # Deprecated: use `lint.args` instead.
+    if "args" in GLOBAL_SETTINGS:
+        settings["args"] = GLOBAL_SETTINGS["args"]
+
+    # Deprecated: use `lint.run` instead.
+    if "run" in GLOBAL_SETTINGS:
+        settings["run"] = GLOBAL_SETTINGS["run"]
+
+    return settings
 
 
 def _update_workspace_settings(settings: list[WorkspaceSettings]) -> None:
