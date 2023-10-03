@@ -166,9 +166,8 @@ Upon successful installation, you should see errors surfaced directly in your ed
 
 ![](https://user-images.githubusercontent.com/1309177/209262106-71e34f8d-73cc-4889-89f7-3f54a4481c52.png)
 
-Future versions of Helix support the use of multiple language servers, use the
-following configuration to use `ruff-lsp` alongside a language server such as
-`pyright`.
+Future versions of Helix support the use of multiple language servers. The following configuration
+would enable the use of `ruff-lsp` alongside a language server like `pyright`:
 
 ```toml
 [[language]]
