@@ -200,7 +200,7 @@ def did_close(params: DidCloseTextDocumentParams) -> None:
 async def did_save(params: DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
     document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
-    if lint_run(_get_settings_by_document(document)) in ("onType", "onSave"):
+    if lint_run(_get_settings_by_document(document.path)) in ("onType", "onSave"):
         diagnostics: list[Diagnostic] = await _lint_document_impl(document)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
@@ -209,7 +209,7 @@ async def did_save(params: DidSaveTextDocumentParams) -> None:
 async def did_change(params: DidChangeTextDocumentParams) -> None:
     """LSP handler for textDocument/didChange request."""
     document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
-    if lint_run(_get_settings_by_document(document)) == "onType":
+    if lint_run(_get_settings_by_document(document.path)) == "onType":
         diagnostics: list[Diagnostic] = await _lint_document_impl(document)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
@@ -457,7 +457,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     """LSP handler for textDocument/codeAction request."""
     document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
 
-    settings = _get_settings_by_document(document)
+    settings = _get_settings_by_document(document.path)
 
     if utils.is_stdlib_file(document.path):
         # Don't format standard library files.
@@ -672,7 +672,7 @@ async def resolve_code_action(params: CodeAction) -> CodeAction:
     """LSP handler for codeAction/resolve request."""
     document = LSP_SERVER.workspace.get_text_document(cast(str, params.data))
 
-    settings = _get_settings_by_document(document)
+    settings = _get_settings_by_document(document.path)
 
     if settings["organizeImports"] and params.kind in (
         CodeActionKind.SourceOrganizeImports,
@@ -1013,8 +1013,8 @@ def _update_workspace_settings(settings: list[WorkspaceSettings]) -> None:
             }
 
 
-def _get_document_key(document: workspace.TextDocument) -> str | None:
-    document_workspace = Path(document.path)
+def _get_document_key(document_path: str) -> str | None:
+    document_workspace = Path(document_path)
     workspaces = {s["workspacePath"] for s in WORKSPACE_SETTINGS.values()}
 
     while document_workspace != document_workspace.parent:
@@ -1024,16 +1024,11 @@ def _get_document_key(document: workspace.TextDocument) -> str | None:
     return None
 
 
-def _get_settings_by_document(
-    document: workspace.TextDocument | None,
-) -> WorkspaceSettings:
-    if document is None or document.path is None:
-        return list(WORKSPACE_SETTINGS.values())[0]
-
-    key = _get_document_key(document)
+def _get_settings_by_document(document_path: str) -> WorkspaceSettings:
+    key = _get_document_key(document_path)
     if key is None:
         # This is either a non-workspace file or there is no workspace.
-        workspace_path = os.fspath(Path(document.path).parent)
+        workspace_path = os.fspath(Path(document_path).parent)
         return {
             **_get_global_defaults(),  # type: ignore[misc]
             "cwd": None,
@@ -1161,7 +1156,7 @@ async def _run_check_on_document(
         log_warning(f"Skipping standard library file: {document.path}")
         return None
 
-    settings = _get_settings_by_document(document)
+    settings = _get_settings_by_document(document.path)
 
     executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_LINTER)
     argv: list[str] = CHECK_ARGS + list(extra_args)
@@ -1202,7 +1197,7 @@ async def _run_format_on_document(document: workspace.TextDocument) -> RunResult
         log_warning(f"Skipping standard library file: {document.path}")
         return None
 
-    settings = _get_settings_by_document(document)
+    settings = _get_settings_by_document(document.path)
     executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_FORMATTER)
     argv: list[str] = [
         "format",
@@ -1233,7 +1228,7 @@ async def _run_subcommand_on_document(
     args: Sequence[str],
 ) -> RunResult:
     """Runs the tool subcommand on the given document."""
-    settings = _get_settings_by_document(document)
+    settings = _get_settings_by_document(document.path)
 
     executable = _find_ruff_binary(settings, version_requirement)
     argv: list[str] = list(args)
