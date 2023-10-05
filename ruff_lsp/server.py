@@ -183,7 +183,7 @@ UNSUPPORTED_FORMAT_ARGS = [
 @LSP_SERVER.feature(TEXT_DOCUMENT_DID_OPEN)
 async def did_open(params: DidOpenTextDocumentParams) -> None:
     """LSP handler for textDocument/didOpen request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     diagnostics: list[Diagnostic] = await _lint_document_impl(document)
     LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
@@ -191,7 +191,7 @@ async def did_open(params: DidOpenTextDocumentParams) -> None:
 @LSP_SERVER.feature(TEXT_DOCUMENT_DID_CLOSE)
 def did_close(params: DidCloseTextDocumentParams) -> None:
     """LSP handler for textDocument/didClose request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     # Publishing empty diagnostics to clear the entries for this file.
     LSP_SERVER.publish_diagnostics(document.uri, [])
 
@@ -199,7 +199,7 @@ def did_close(params: DidCloseTextDocumentParams) -> None:
 @LSP_SERVER.feature(TEXT_DOCUMENT_DID_SAVE)
 async def did_save(params: DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     if lint_run(_get_settings_by_document(document)) in ("onType", "onSave"):
         diagnostics: list[Diagnostic] = await _lint_document_impl(document)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
@@ -208,13 +208,13 @@ async def did_save(params: DidSaveTextDocumentParams) -> None:
 @LSP_SERVER.feature(TEXT_DOCUMENT_DID_CHANGE)
 async def did_change(params: DidChangeTextDocumentParams) -> None:
     """LSP handler for textDocument/didChange request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     if lint_run(_get_settings_by_document(document)) == "onType":
         diagnostics: list[Diagnostic] = await _lint_document_impl(document)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
 
-async def _lint_document_impl(document: workspace.Document) -> list[Diagnostic]:
+async def _lint_document_impl(document: workspace.TextDocument) -> list[Diagnostic]:
     result = await _run_check_on_document(document)
     if result is None:
         return []
@@ -364,7 +364,7 @@ CODE_REGEX = re.compile(r"[A-Z]+[0-9]+")
 @LSP_SERVER.feature(TEXT_DOCUMENT_HOVER)
 async def hover(params: HoverParams) -> Hover | None:
     """LSP handler for textDocument/hover request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     match = NOQA_REGEX.search(document.lines[params.position.line])
     if not match:
         return None
@@ -455,7 +455,7 @@ class LegacyFix(TypedDict):
 )
 async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     """LSP handler for textDocument/codeAction request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
 
     settings = _get_settings_by_document(document)
 
@@ -670,7 +670,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
 @LSP_SERVER.feature(CODE_ACTION_RESOLVE)
 async def resolve_code_action(params: CodeAction) -> CodeAction:
     """LSP handler for codeAction/resolve request."""
-    document = LSP_SERVER.workspace.get_document(cast(str, params.data))
+    document = LSP_SERVER.workspace.get_text_document(cast(str, params.data))
 
     settings = _get_settings_by_document(document)
 
@@ -696,7 +696,7 @@ async def resolve_code_action(params: CodeAction) -> CodeAction:
 @LSP_SERVER.command("ruff.applyAutofix")
 async def apply_autofix(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
-    text_document = LSP_SERVER.workspace.get_document(uri)
+    text_document = LSP_SERVER.workspace.get_text_document(uri)
     results = await _fix_document_impl(text_document)
     LSP_SERVER.apply_edit(
         _create_workspace_edits(text_document, results),
@@ -707,7 +707,7 @@ async def apply_autofix(arguments: tuple[TextDocument]):
 @LSP_SERVER.command("ruff.applyOrganizeImports")
 async def apply_organize_imports(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
-    text_document = LSP_SERVER.workspace.get_document(uri)
+    text_document = LSP_SERVER.workspace.get_text_document(uri)
     results = await _fix_document_impl(text_document, only="I001")
     LSP_SERVER.apply_edit(
         _create_workspace_edits(text_document, results),
@@ -720,7 +720,7 @@ if RUFF_EXPERIMENTAL_FORMATTER:
     @LSP_SERVER.command("ruff.applyFormat")
     async def apply_format(arguments: tuple[TextDocument]):
         uri = arguments[0]["uri"]
-        text_document = LSP_SERVER.workspace.get_document(uri)
+        text_document = LSP_SERVER.workspace.get_text_document(uri)
         results = await _format_document_impl(text_document)
         LSP_SERVER.apply_edit(
             _create_workspace_edits(text_document, results),
@@ -733,19 +733,19 @@ if RUFF_EXPERIMENTAL_FORMATTER:
         params: DocumentFormattingParams,
     ) -> list[TextEdit] | None:
         uri = params.text_document.uri
-        document = ls.workspace.get_document(uri)
+        document = ls.workspace.get_text_document(uri)
         return await _format_document_impl(document)
 
 
 async def _format_document_impl(
-    document: workspace.Document,
+    document: workspace.TextDocument,
 ) -> list[TextEdit]:
     result = await _run_format_on_document(document)
     return _result_to_edits(document, result)
 
 
 async def _fix_document_impl(
-    document: workspace.Document,
+    document: workspace.TextDocument,
     *,
     only: str | None = None,
 ) -> list[TextEdit]:
@@ -754,7 +754,7 @@ async def _fix_document_impl(
 
 
 def _result_to_edits(
-    document: workspace.Document,
+    document: workspace.TextDocument,
     result: RunResult | None,
 ) -> list[TextEdit]:
     if result is None:
@@ -787,7 +787,7 @@ def _result_to_edits(
 
 
 def _create_workspace_edits(
-    document: workspace.Document,
+    document: workspace.TextDocument,
     edits: Sequence[TextEdit | AnnotatedTextEdit],
 ) -> WorkspaceEdit:
     return WorkspaceEdit(
@@ -803,7 +803,7 @@ def _create_workspace_edits(
     )
 
 
-def _create_workspace_edit(document: workspace.Document, fix: Fix) -> WorkspaceEdit:
+def _create_workspace_edit(document: workspace.TextDocument, fix: Fix) -> WorkspaceEdit:
     return WorkspaceEdit(
         document_changes=[
             TextDocumentEdit(
@@ -845,7 +845,7 @@ def _get_line_endings(text: str) -> str | None:
     return None  # No line ending found
 
 
-def _match_line_endings(document: workspace.Document, text: str) -> str:
+def _match_line_endings(document: workspace.TextDocument, text: str) -> str:
     """Ensures that the edited text line endings matches the document line endings."""
     expected = _get_line_endings(document.source)
     actual = _get_line_endings(text)
@@ -1013,7 +1013,7 @@ def _update_workspace_settings(settings: list[WorkspaceSettings]) -> None:
             }
 
 
-def _get_document_key(document: workspace.Document) -> str | None:
+def _get_document_key(document: workspace.TextDocument) -> str | None:
     document_workspace = Path(document.path)
     workspaces = {s["workspacePath"] for s in WORKSPACE_SETTINGS.values()}
 
@@ -1025,7 +1025,7 @@ def _get_document_key(document: workspace.Document) -> str | None:
 
 
 def _get_settings_by_document(
-    document: workspace.Document | None,
+    document: workspace.TextDocument | None,
 ) -> WorkspaceSettings:
     if document is None or document.path is None:
         return list(WORKSPACE_SETTINGS.values())[0]
@@ -1147,7 +1147,7 @@ def _executable_version(executable: str) -> Version:
 
 
 async def _run_check_on_document(
-    document: workspace.Document,
+    document: workspace.TextDocument,
     *,
     extra_args: Sequence[str] = [],
     only: str | None = None,
@@ -1192,7 +1192,7 @@ async def _run_check_on_document(
     )
 
 
-async def _run_format_on_document(document: workspace.Document) -> RunResult | None:
+async def _run_format_on_document(document: workspace.TextDocument) -> RunResult | None:
     """Runs the Ruff `format` subcommand on the given document."""
     if str(document.uri).startswith("vscode-notebook-cell"):
         # Skip notebook cells
@@ -1227,7 +1227,7 @@ async def _run_format_on_document(document: workspace.Document) -> RunResult | N
 
 
 async def _run_subcommand_on_document(
-    document: workspace.Document,
+    document: workspace.TextDocument,
     version_requirement: SpecifierSet,
     *,
     args: Sequence[str],
