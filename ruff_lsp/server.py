@@ -121,7 +121,7 @@ CHECK_ARGS = [
     "--no-cache",
     "--no-fix",
     "--quiet",
-    "--format",
+    "--output-format",
     "json",
     "-",
 ]
@@ -155,7 +155,7 @@ UNSUPPORTED_CHECK_ARGS = [
     "--watch",
     # Arguments that are not supported at all, and will error when provided.
     # "--stdin-filename",
-    # "--format",
+    # "--output-format",
 ]
 
 # Arguments that are not allowed to be passed to `ruff format`.
