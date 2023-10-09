@@ -95,9 +95,9 @@ pluggy==1.2.0 \
     --hash=sha256:c2fd55a7d7a3863cba1a013e4e2414658b1d07b6bc57b3919e0c63c9abb99849 \
     --hash=sha256:d12f0c4b579b15f5e054301bb226ee85eeeba08ffec228092f8defbaa3a4c4b3
     # via pytest
-pygls==1.1.0 \
-    --hash=sha256:70acb6fe0df1c8a17b7ce08daa0afdb4aedc6913a6a6696003e1434fda80a06e \
-    --hash=sha256:eb19b818039d3d705ec8adbcdf5809a93af925f30cd7a3f3b7573479079ba00e
+pygls==1.1.1 \
+    --hash=sha256:330704551a335b443bf1cdfb0507f121608591095898d451f0007eeb1510067c \
+    --hash=sha256:b1b4ddd6f800a5573f61f0ec2cd3bc7a859d171f48142b46e1de35a1357c00fe
     # via ruff-lsp (pyproject.toml)
 pyproject-hooks==1.0.0 \
     --hash=sha256:283c11acd6b928d2f6a7c73fa0d01cb2bdc5f07c57a2eeb6e83d5e56b97976f8 \
