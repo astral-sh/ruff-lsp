@@ -21,7 +21,7 @@ async def test_format(tmp_path):
     uri = utils.as_uri(str(test_file))
 
     workspace = Workspace(str(tmp_path))
-    document = workspace.get_document(uri)
+    document = workspace.get_text_document(uri)
 
     result = await _format_document_impl(document)
     [edit] = result
