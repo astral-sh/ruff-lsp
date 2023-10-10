@@ -46,10 +46,11 @@ jobs:
           # Get the oldest supported version from the pyproject.toml
           OLDEST=$(rg -No '"ruff>=(.*)"' -r '$1' pyproject.toml)
 
-
+          echo "::set-output name=versions::[\"$OLDEST\", \"$LATEST\"]"
           echo "::set-output name=oldest::$OLDEST
           echo "::set-output name=latest::$LATEST
     outputs:
+      versions: ${{ steps.set-versions.outputs.versions }}
       oldest: ${{ steps.set-versions.outputs.oldest }}
       latest: ${{ steps.set-versions.outputs.latest }}
   test:
@@ -59,12 +60,16 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12-dev"]
-        ruff-version: ["${{ needs.ruff-versions.outputs.latest }}"]
+        ruff-version: ${{ fromJson(needs.ruff-versions.outputs.versions) }}
         os: [ubuntu-latest, macos-latest, windows-latest]
 
-        include:
-          - os: ubuntu-latest
+        exclude:
+          - os: windows-latest
             ruff-version: ${{ needs.ruff-versions.outputs.oldest }}
+          - os: macos-latest
+            ruff-version: ${{ needs.ruff-versions.outputs.oldest }}
+            
+            
 
     runs-on: ${{ matrix.os }}
     steps:
