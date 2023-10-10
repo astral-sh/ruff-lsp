@@ -5,6 +5,7 @@ import os
 import tempfile
 import unittest
 from threading import Event
+from packaging.version import Version
 
 from tests.client import defaults, session, utils
 
@@ -16,11 +17,19 @@ CONTENTS = """import sys
 print(x)
 """
 
+VERSION_REQUIREMENT_ASTRAL_DOCS = Version("0.0.291")
 
-class TestServer(unittest.TestCase):
+
+class TestServer:
     maxDiff = None
 
-    def test_linting_example(self) -> None:
+    def test_linting_example(self, ruff_version: Version) -> None:
+        expected_docs_url = (
+            "https://docs.astral.sh/ruff/"
+            if ruff_version >= VERSION_REQUIREMENT_ASTRAL_DOCS
+            else "https://beta.ruff.rs/docs/"
+        )
+
         with tempfile.NamedTemporaryFile(suffix=".py") as fp:
             fp.write(CONTENTS.encode())
             fp.flush()
@@ -60,7 +69,7 @@ class TestServer(unittest.TestCase):
                         {
                             "code": "F401",
                             "codeDescription": {
-                                "href": "https://docs.astral.sh/ruff/rules/unused-import"
+                                "href": expected_docs_url + "rules/unused-import"
                             },
                             "data": {
                                 "fix": {
@@ -88,7 +97,7 @@ class TestServer(unittest.TestCase):
                         {
                             "code": "F821",
                             "codeDescription": {
-                                "href": "https://docs.astral.sh/ruff/rules/undefined-name"
+                                "href": expected_docs_url + "rules/undefined-name"
                             },
                             "data": {"fix": None, "noqa_row": 3},
                             "message": "Undefined name `x`",
@@ -102,9 +111,15 @@ class TestServer(unittest.TestCase):
                     ],
                     "uri": uri,
                 }
-            self.assertEqual(expected, actual)
+            assert expected == actual
 
-    def test_no_initialization_options(self) -> None:
+    def test_no_initialization_options(self, ruff_version: Version) -> None:
+        expected_docs_url = (
+            "https://docs.astral.sh/ruff/"
+            if ruff_version >= VERSION_REQUIREMENT_ASTRAL_DOCS
+            else "https://beta.ruff.rs/docs/"
+        )
+
         with tempfile.NamedTemporaryFile(suffix=".py") as fp:
             fp.write(CONTENTS.encode())
             fp.flush()
@@ -149,7 +164,7 @@ class TestServer(unittest.TestCase):
                         {
                             "code": "F401",
                             "codeDescription": {
-                                "href": "https://docs.astral.sh/ruff/rules/unused-import"
+                                "href": expected_docs_url + "rules/unused-import"
                             },
                             "data": {
                                 "fix": {
@@ -177,7 +192,7 @@ class TestServer(unittest.TestCase):
                         {
                             "code": "F821",
                             "codeDescription": {
-                                "href": "https://docs.astral.sh/ruff/rules/undefined-name"
+                                "href": expected_docs_url + "rules/undefined-name"
                             },
                             "data": {"fix": None, "noqa_row": 3},
                             "message": "Undefined name `x`",
@@ -191,4 +206,4 @@ class TestServer(unittest.TestCase):
                     ],
                     "uri": uri,
                 }
-            self.assertEqual(expected, actual)
+            assert expected == actual
