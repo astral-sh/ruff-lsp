@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
+
 import pytest
 from pygls.workspace import Workspace
 
-from ruff_lsp.server import _format_document_impl
+from ruff_lsp.server import (
+    VERSION_REQUIREMENT_FORMATTER,
+    _find_ruff_binary,
+    _format_document_impl,
+    _get_settings_by_document,
+)
 from tests.client import utils
 
 original = """
@@ -23,6 +30,18 @@ async def test_format(tmp_path):
     workspace = Workspace(str(tmp_path))
     document = workspace.get_document(uri)
 
-    result = await _format_document_impl(document)
-    [edit] = result
-    assert edit.new_text == expected
+    settings = _get_settings_by_document(document.path)
+    executable = _find_ruff_binary(settings, version_requirement=None)
+
+    handle_unsupported = (
+        pytest.raises(
+            RuntimeError, match=f"Ruff .* required, but found {executable.version}"
+        )
+        if not VERSION_REQUIREMENT_FORMATTER.contains(executable.version)
+        else nullcontext()
+    )
+
+    with handle_unsupported:
+        result = await _format_document_impl(document)
+        [edit] = result
+        assert edit.new_text == expected
