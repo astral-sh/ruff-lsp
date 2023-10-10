@@ -7,7 +7,23 @@ on:
     branches: [main]
 
 jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: extractions/setup-just@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: just install
+      - name: Run checks
+        run: just check
   ruff-versions:
+    name: Generate test versions
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -32,7 +48,8 @@ jobs:
           echo "::set-output name=versions::[\"$OLDEST\", \"$LATEST\"]"
     outputs:
       versions: ${{ steps.set-versions.outputs.versions }}
-  ci:
+  test:
+    name: Test
     needs: ruff-versions
     strategy:
       fail-fast: false
@@ -53,7 +70,5 @@ jobs:
         run: just install
       - name: Install test Ruff version
         run: pip install ruff==${{ matrix.ruff-version }}
-      - name: Run checks
-        run: just check
       - name: Run tests
         run: just test
