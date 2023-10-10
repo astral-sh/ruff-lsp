@@ -54,7 +54,7 @@ jobs:
       oldest: ${{ steps.set-versions.outputs.oldest }}
       latest: ${{ steps.set-versions.outputs.latest }}
   test:
-    name: Test (python ${{ matrix.python-version }}, ruff ${{ matrix.ruff-version }}, ${{ matrix.os }})
+    name: Test (python-${{ matrix.python-version }}, ruff-${{ matrix.ruff-version }}, ${{ matrix.os }})
     needs: ruff-versions
     strategy:
       fail-fast: false
