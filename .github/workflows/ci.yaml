@@ -68,8 +68,6 @@ jobs:
             ruff-version: ${{ needs.ruff-versions.outputs.oldest }}
           - os: macos-latest
             ruff-version: ${{ needs.ruff-versions.outputs.oldest }}
-            
-            
 
     runs-on: ${{ matrix.os }}
     steps:
