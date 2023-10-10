@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import os
 import tempfile
-import unittest
 from threading import Event
+
 from packaging.version import Version
 
 from tests.client import defaults, session, utils
