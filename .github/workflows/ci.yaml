@@ -7,12 +7,68 @@ on:
     branches: [main]
 
 jobs:
-  ci:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: extractions/setup-just@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+      - name: Install dependencies
+        run: just install
+      - name: Run checks
+        run: just check
+  ruff-versions:
+    name: Generate test versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y ripgrep
+      - name: Determine test versions
+        id: set-versions
+        run: |
+          # Get the latest release version from GitHub
+          LATEST=$( \
+            curl -L \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              https://api.github.com/repos/astral-sh/ruff/releases/latest \
+              | jq '.tag_name' --raw-output \
+              | cut -c2- \
+          )
+          # Get the oldest supported version from the pyproject.toml
+          OLDEST=$(rg -No '"ruff>=(.*)"' -r '$1' pyproject.toml)
+
+          echo "::set-output name=versions::[\"$OLDEST\", \"$LATEST\"]"
+          echo "::set-output name=oldest::$OLDEST
+          echo "::set-output name=latest::$LATEST
+    outputs:
+      versions: ${{ steps.set-versions.outputs.versions }}
+      oldest: ${{ steps.set-versions.outputs.oldest }}
+      latest: ${{ steps.set-versions.outputs.latest }}
+  test:
+    name: Test (python-${{ matrix.python-version }}, ruff-${{ matrix.ruff-version }}, ${{ matrix.os }})
+    needs: ruff-versions
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12-dev"]
+        ruff-version: ${{ fromJson(needs.ruff-versions.outputs.versions) }}
         os: [ubuntu-latest, macos-latest, windows-latest]
+
+        exclude:
+          - os: windows-latest
+            ruff-version: ${{ needs.ruff-versions.outputs.oldest }}
+          - os: macos-latest
+            ruff-version: ${{ needs.ruff-versions.outputs.oldest }}
+
     runs-on: ${{ matrix.os }}
     steps:
       - uses: extractions/setup-just@v1
@@ -22,9 +78,10 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip'
       - name: Install dependencies
         run: just install
-      - name: Run checks
-        run: just check
+      - name: Install test Ruff version
+        run: pip install ruff==${{ matrix.ruff-version }}
       - name: Run tests
         run: just test

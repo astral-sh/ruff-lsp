@@ -1053,7 +1053,7 @@ class Executable(NamedTuple):
 
 
 def _find_ruff_binary(
-    settings: WorkspaceSettings, version_requirement: SpecifierSet
+    settings: WorkspaceSettings, version_requirement: SpecifierSet | None
 ) -> Executable:
     """Returns the executable along with its version.
 
@@ -1063,7 +1063,9 @@ def _find_ruff_binary(
     path = _find_ruff_binary_path(settings)
 
     version = _executable_version(path)
-    if not version_requirement.contains(version, prereleases=True):
+    if version_requirement and not version_requirement.contains(
+        version, prereleases=True
+    ):
         message = f"Ruff {version_requirement} required, but found {version} at {path}"
         show_error(message)
         raise RuntimeError(message)
