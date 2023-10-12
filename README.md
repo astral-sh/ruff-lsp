@@ -32,7 +32,7 @@ alongside another Python LSP in order to support features like navigation and au
 
 ![](https://user-images.githubusercontent.com/1309177/205175987-82e23e21-14bb-467d-9ef0-027f24b75865.gif)
 
-## Installation and Usage
+## Installation
 
 `ruff-lsp` is available as [`ruff-lsp`](https://pypi.org/project/ruff-lsp/) on PyPI:
 
