@@ -1172,7 +1172,7 @@ async def _run_check_on_document(
         else:
             argv.append(arg)
 
-    # If the Ruff version is sufficiently recent, use the deprecated `--format`
+    # If the Ruff version is not sufficiently recent, use the deprecated `--format`
     # argument instead of `--output-format`.
     if not VERSION_REQUIREMENT_OUTPUT_FORMAT.contains(
         executable.version, prereleases=True
