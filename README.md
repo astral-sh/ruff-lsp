@@ -220,7 +220,6 @@ using "Fix all" can be enabled by setting `unsafe-fixes = true` in your Ruff con
 See the [Ruff fix docs](https://docs.astral.sh/ruff/configuration/#fix-safety) for more details on how fix
 safety works.
 
-
 ## Settings
 
 The exact mechanism by which settings will be passed to `ruff-lsp` will vary by editor. However,
