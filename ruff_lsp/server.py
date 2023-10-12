@@ -113,7 +113,10 @@ TOOL_DISPLAY = "Ruff"
 # Require at least Ruff v0.0.291 for formatting, but allow older versions for linting.
 VERSION_REQUIREMENT_FORMATTER = SpecifierSet(">=0.0.291,<0.2.0")
 VERSION_REQUIREMENT_LINTER = SpecifierSet(">=0.0.189,<0.2.0")
+# Version requirement for use of the "ALL" rule selector
 VERSION_REQUIREMENT_ALL_SELECTOR = SpecifierSet(">=0.0.198,<0.2.0")
+# Version requirement for use of the `--output-format` option
+VERSION_REQUIREMENT_OUTPUT_FORMAT = SpecifierSet(">=0.0.291,<0.2.0")
 
 # Arguments provided to every Ruff invocation.
 CHECK_ARGS = [
@@ -121,7 +124,7 @@ CHECK_ARGS = [
     "--no-cache",
     "--no-fix",
     "--quiet",
-    "--format",
+    "--output-format",
     "json",
     "-",
 ]
@@ -155,7 +158,7 @@ UNSUPPORTED_CHECK_ARGS = [
     "--watch",
     # Arguments that are not supported at all, and will error when provided.
     # "--stdin-filename",
-    # "--format",
+    # "--output-format",
 ]
 
 # Arguments that are not allowed to be passed to `ruff format`.
@@ -1168,6 +1171,15 @@ async def _run_check_on_document(
             log_to_output(f"Ignoring unsupported argument: {arg}")
         else:
             argv.append(arg)
+
+    # If the Ruff version is not sufficiently recent, use the deprecated `--format`
+    # argument instead of `--output-format`.
+    if not VERSION_REQUIREMENT_OUTPUT_FORMAT.contains(
+        executable.version, prereleases=True
+    ):
+        index = argv.index("--output-format")
+        argv.pop(index)
+        argv.insert(index, "--format")
 
     # If we're trying to run a single rule, add it to the command line, and disable
     # all other rules (if the Ruff version is sufficiently recent).
