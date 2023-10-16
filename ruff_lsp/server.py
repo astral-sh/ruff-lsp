@@ -23,6 +23,7 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_DID_SAVE,
     TEXT_DOCUMENT_FORMATTING,
+    TEXT_DOCUMENT_DOCUMENT_LINK,
     TEXT_DOCUMENT_HOVER,
     AnnotatedTextEdit,
     ClientCapabilities,
@@ -39,6 +40,8 @@ from lsprotocol.types import (
     DidOpenTextDocumentParams,
     DidSaveTextDocumentParams,
     DocumentFormattingParams,
+    DocumentLink,
+    DocumentLinkParams,
     Hover,
     HoverParams,
     InitializeParams,
@@ -364,25 +367,33 @@ NOQA_REGEX = re.compile(
 CODE_REGEX = re.compile(r"[A-Z]+[0-9]+")
 
 
-@LSP_SERVER.feature(TEXT_DOCUMENT_HOVER)
-async def hover(params: HoverParams) -> Hover | None:
-    """LSP handler for textDocument/hover request."""
-    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
-    match = NOQA_REGEX.search(document.lines[params.position.line])
+def _parse_codes(line: str) -> list[tuple(str, int, int)]:
+    match = NOQA_REGEX.search(line)
     if not match:
-        return None
+        return []
 
     codes = match.group("codes")
     if not codes:
-        return None
+        return []
 
+    res = []
     codes_start = match.start("codes")
     for match in CODE_REGEX.finditer(codes):
         start, end = match.span()
         start += codes_start
         end += codes_start
+        code = match.group()
+        res.append((code, start, end))
+    return res
+
+
+@LSP_SERVER.feature(TEXT_DOCUMENT_HOVER)
+async def hover(params: HoverParams) -> Hover | None:
+    """LSP handler for textDocument/hover request."""
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
+
+    for code, start, end in _parse_codes(document.lines[params.position.line]):
         if start <= params.position.character < end:
-            code = match.group()
             result = await _run_subcommand_on_document(
                 document, VERSION_REQUIREMENT_LINTER, args=["--explain", code]
             )
@@ -395,6 +406,35 @@ async def hover(params: HoverParams) -> Hover | None:
                 )
 
     return None
+
+
+@LSP_SERVER.feature(TEXT_DOCUMENT_DOCUMENT_LINK)
+async def document_link(params: DocumentLinkParams) -> list[DocumentLink] | None:
+    """LSP handler for textDocument/documentLink request."""
+    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+
+    links: list[DocumentLink] = []
+    for index, line in enumerate(document.lines):
+        for code, start, end in _parse_codes(line):
+            result = await _run_subcommand_on_document(
+                document,
+                VERSION_REQUIREMENT_LINTER,
+                args=["--explain", code, "--format", "json"],
+            )
+            if result.stdout:
+                name = json.loads(result.stdout.decode("utf-8")).get("name")
+                links.append(
+                    DocumentLink(
+                        range=Range(
+                            start=Position(line=index, character=start),
+                            end=Position(line=index, character=end),
+                        ),
+                        tooltip=f"Jump to {code} documentation",
+                        target=f"https://docs.astral.sh/ruff/rules/{name}",
+                    )
+                )
+
+    return links
 
 
 ###
