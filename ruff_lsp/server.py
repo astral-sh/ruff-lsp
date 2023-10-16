@@ -718,17 +718,18 @@ async def apply_organize_imports(arguments: tuple[TextDocument]):
     )
 
 
-if RUFF_EXPERIMENTAL_FORMATTER:
+@LSP_SERVER.command("ruff.applyFormat")
+async def apply_format(arguments: tuple[TextDocument]):
+    uri = arguments[0]["uri"]
+    text_document = LSP_SERVER.workspace.get_text_document(uri)
+    results = await _format_document_impl(text_document)
+    LSP_SERVER.apply_edit(
+        _create_workspace_edits(text_document, results),
+        "Ruff: Format document",
+    )
 
-    @LSP_SERVER.command("ruff.applyFormat")
-    async def apply_format(arguments: tuple[TextDocument]):
-        uri = arguments[0]["uri"]
-        text_document = LSP_SERVER.workspace.get_text_document(uri)
-        results = await _format_document_impl(text_document)
-        LSP_SERVER.apply_edit(
-            _create_workspace_edits(text_document, results),
-            "Ruff: Format document",
-        )
+
+if RUFF_EXPERIMENTAL_FORMATTER:
 
     @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
     async def format_document(
