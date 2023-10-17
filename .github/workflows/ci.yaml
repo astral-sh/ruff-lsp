@@ -1,5 +1,8 @@
 name: CI
 
+env:
+  RUFF_DEV_REVISION = "main"
+
 on:
   push:
     branches: [main]
@@ -46,13 +49,11 @@ jobs:
           # Get the oldest supported version from the pyproject.toml
           OLDEST=$(rg -No '"ruff>=(.*)"' -r '$1' pyproject.toml)
 
-          echo "::set-output name=versions::[\"$OLDEST\", \"$LATEST\"]"
+          echo "::set-output name=versions::[\"$OLDEST\", \"$LATEST\", ${{ env.RUFF_DEV_REVISION }}]"
           echo "::set-output name=oldest::$OLDEST
-          echo "::set-output name=latest::$LATEST
     outputs:
       versions: ${{ steps.set-versions.outputs.versions }}
       oldest: ${{ steps.set-versions.outputs.oldest }}
-      latest: ${{ steps.set-versions.outputs.latest }}
   test:
     name: Test (python-${{ matrix.python-version }}, ruff-${{ matrix.ruff-version }}, ${{ matrix.os }})
     needs: ruff-versions
@@ -81,7 +82,14 @@ jobs:
           cache: 'pip'
       - name: Install dependencies
         run: just install
-      - name: Install test Ruff version
+
+      - name: Install test Ruff version from PyPI
+        if: ${{ matrix.ruff-version != env.RUFF_DEV_REVISION }} 
         run: pip install ruff==${{ matrix.ruff-version }}
+
+      - name: "Install test Ruff version from GitHub"
+        if: ${{ matrix.ruff-version == env.RUFF_DEV_REVISION }}
+        run: pip install git+https://github.com/astral-sh/ruff@${{ matrix.ruff-version }}
+
       - name: Run tests
         run: just test
