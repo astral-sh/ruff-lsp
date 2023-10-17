@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import os
 import tempfile
+from dataclasses import dataclass
 from threading import Event
 
 from packaging.version import Version
+from typing_extensions import Self
 
 from tests.client import defaults, session, utils
 
@@ -18,6 +20,21 @@ print(x)
 """
 
 VERSION_REQUIREMENT_ASTRAL_DOCS = Version("0.0.291")
+VERSION_REQUIREMENT_APPLICABILITY_RENAME = Version("0.1.0")
+
+
+@dataclass(frozen=True)
+class Applicability:
+    safe: str
+    unsafe: str
+    display: str
+
+    @classmethod
+    def from_ruff_version(cls, ruff_version: Version) -> Self:
+        if ruff_version >= VERSION_REQUIREMENT_APPLICABILITY_RENAME:
+            return cls(safe="safe", unsafe="unsafe", display="display")
+        else:
+            return cls(safe="Automatic", unsafe="Suggested", display="Manual")
 
 
 class TestServer:
@@ -29,6 +46,7 @@ class TestServer:
             if ruff_version >= VERSION_REQUIREMENT_ASTRAL_DOCS
             else "https://beta.ruff.rs/docs/"
         )
+        applicability = Applicability.from_ruff_version(ruff_version)
 
         with tempfile.NamedTemporaryFile(suffix=".py") as fp:
             fp.write(CONTENTS.encode())
@@ -73,7 +91,7 @@ class TestServer:
                             },
                             "data": {
                                 "fix": {
-                                    "applicability": "Automatic",
+                                    "applicability": applicability.safe,
                                     "edits": [
                                         {
                                             "content": "",
@@ -119,6 +137,7 @@ class TestServer:
             if ruff_version >= VERSION_REQUIREMENT_ASTRAL_DOCS
             else "https://beta.ruff.rs/docs/"
         )
+        applicability = Applicability.from_ruff_version(ruff_version)
 
         with tempfile.NamedTemporaryFile(suffix=".py") as fp:
             fp.write(CONTENTS.encode())
@@ -168,7 +187,7 @@ class TestServer:
                             },
                             "data": {
                                 "fix": {
-                                    "applicability": "Automatic",
+                                    "applicability": applicability.safe,
                                     "edits": [
                                         {
                                             "content": "",
