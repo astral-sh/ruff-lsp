@@ -48,9 +48,10 @@ jobs:
           )
           # Get the oldest supported version from the pyproject.toml
           OLDEST=$(rg -No '"ruff>=(.*)"' -r '$1' pyproject.toml)
+          DEV=${{ env.RUFF_DEV_REVISION }}
 
-          echo "::set-output name=versions::[\"$OLDEST\", \"$LATEST\", \"${{ env.RUFF_DEV_REVISION }}\"]"
-          echo "::set-output name=oldest::$OLDEST
+          echo "::set-output name=versions::[\"$OLDEST\", \"$LATEST\", \"$DEV\"]"
+          echo "::set-output name=oldest::$OLDEST"
     outputs:
       versions: ${{ steps.set-versions.outputs.versions }}
       oldest: ${{ steps.set-versions.outputs.oldest }}
