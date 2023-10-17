@@ -1,7 +1,7 @@
 name: CI
 
 env:
-  RUFF_DEV_REVISION = "main"
+  RUFF_DEV_REVISION: 'main'
 
 on:
   push:
