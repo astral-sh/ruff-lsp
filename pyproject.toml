@@ -38,7 +38,7 @@ dependencies = [
   "packaging>=23.1",
   "pygls>=1.1.0",
   "lsprotocol>=2023.0.0a1",
-  "ruff>=0.0.274",
+  "ruff>=0.1.0",
   "typing_extensions",
 ]
 
