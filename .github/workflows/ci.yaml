@@ -86,8 +86,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
+
       - name: Install dependencies
-        run: just install
+        run: |
+          pip install -U pip
+          just install
 
       - name: Install test Ruff version from PyPI
         if: ${{ matrix.ruff-version != env.RUFF_UNRELEASED_REF }} 
