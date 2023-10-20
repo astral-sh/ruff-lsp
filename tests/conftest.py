@@ -1,10 +1,10 @@
+import subprocess
 from pathlib import Path
 
 import pytest
-import subprocess
 from packaging.version import Version
 
-from ruff_lsp.server import _find_ruff_binary, _get_global_defaults, uris, Executable
+from ruff_lsp.server import Executable, _find_ruff_binary, _get_global_defaults, uris
 from ruff_lsp.settings import WorkspaceSettings
 
 
@@ -40,4 +40,4 @@ def pytest_report_header(config):
         )
 
     version = output.replace("ruff ", "")
-    return [f"ruff: {version}"]
+    return [f"ruff-version: {version}"]
