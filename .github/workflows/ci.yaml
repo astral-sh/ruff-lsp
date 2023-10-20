@@ -52,9 +52,12 @@ jobs:
 
           echo "::set-output name=versions::[\"$OLDEST\", \"$LATEST\", \"$DEV\"]"
           echo "::set-output name=oldest::$OLDEST"
+          echo "::set-output name=dev::$DEV"
     outputs:
       versions: ${{ steps.set-versions.outputs.versions }}
       oldest: ${{ steps.set-versions.outputs.oldest }}
+      dev: ${{ steps.set-versions.outputs.dev }}
+
   test:
     name: Test (python-${{ matrix.python-version }}, ruff-${{ matrix.ruff-version }}, ${{ matrix.os }})
     needs: ruff-versions
@@ -90,7 +93,9 @@ jobs:
 
       - name: "Install test Ruff version from GitHub"
         if: ${{ matrix.ruff-version == env.RUFF_DEV_REVISION }}
-        run: pip install git+https://github.com/astral-sh/ruff@${{ matrix.ruff-version }}
+        run: |
+          pip install git+https://github.com/astral-sh/ruff@${{ matrix.ruff-version }}
+          ruff version
 
       - name: Run tests
         run: just test
