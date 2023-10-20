@@ -101,7 +101,8 @@ jobs:
       - name: "Install test Ruff version from GitHub"
         if: ${{ matrix.ruff-version == env.RUFF_UNRELEASED_REF }}
         run: |
-          pip install git+https://github.com/astral-sh/ruff@${{ matrix.ruff-version }}
+          pip install --force-reinstall git+https://github.com/astral-sh/ruff@${{ matrix.ruff-version }}
+          pip show ruff
           ruff version
 
       - name: Run tests
