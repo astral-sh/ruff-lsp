@@ -68,14 +68,11 @@ from ruff_lsp.utils import RunResult
 logger = logging.getLogger(__name__)
 
 RUFF_LSP_DEBUG = bool(os.environ.get("RUFF_LSP_DEBUG", False))
-RUFF_EXPERIMENTAL_FORMATTER = bool(os.environ.get("RUFF_EXPERIMENTAL_FORMATTER", False))
 
 if RUFF_LSP_DEBUG:
     log_file = Path(__file__).parent.parent.joinpath("ruff-lsp.log")
     logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)
     logger.info("RUFF_LSP_DEBUG is active")
-    if RUFF_EXPERIMENTAL_FORMATTER:
-        logger.info("RUFF_EXPERIMENTAL_FORMATTER is active")
 
 
 if sys.platform == "win32" and sys.version_info < (3, 8):
@@ -729,16 +726,14 @@ async def apply_format(arguments: tuple[TextDocument]):
     )
 
 
-if RUFF_EXPERIMENTAL_FORMATTER:
-
-    @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
-    async def format_document(
-        ls: server.LanguageServer,
-        params: DocumentFormattingParams,
-    ) -> list[TextEdit] | None:
-        uri = params.text_document.uri
-        document = ls.workspace.get_text_document(uri)
-        return await _format_document_impl(document)
+@LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
+async def format_document(
+    ls: server.LanguageServer,
+    params: DocumentFormattingParams,
+) -> list[TextEdit] | None:
+    uri = params.text_document.uri
+    document = ls.workspace.get_text_document(uri)
+    return await _format_document_impl(document)
 
 
 async def _format_document_impl(
@@ -896,11 +891,6 @@ def initialize(params: InitializeParams) -> None:
     CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE] = _supports_code_action_resolve(
         params.capabilities
     )
-
-    # Internal hidden beta feature. We want to have this in the code base, but we
-    # don't want to expose it to users yet, hence the environment variable. You can
-    # e.g. use this with VS Code by doing `RUFF_EXPERIMENTAL_FORMATTER=1 code .`
-    # CLIENT_CAPABILITIES[TEXT_DOCUMENT_FORMATTING] = RUFF_EXPERIMENTAL_FORMATTER
 
     # Extract `settings` from the initialization options.
     workspace_settings: list[WorkspaceSettings] | WorkspaceSettings | None = (
