@@ -209,6 +209,15 @@ UNSUPPORTED_FORMAT_ARGS = [
 ###
 
 
+def _uri_to_fs_path(uri: str) -> str:
+    """Convert a URI to a file system path."""
+    path = uris.to_fs_path(uri)
+    if path is None:
+        # `pygls` raises a `Exception` as well in `workspace.TextDocument`.
+        raise ValueError(f"Unable to convert URI to file path: {uri}")
+    return path
+
+
 @enum.unique
 class DocumentKind(enum.Enum):
     """The kind of document."""
@@ -244,15 +253,9 @@ class Document:
     @classmethod
     def from_notebook_document(cls, notebook_document: NotebookDocument) -> Self:
         """Create a `Document` from the given Notebook Document."""
-        path = uris.to_fs_path(notebook_document.uri)
-        if path is None:
-            # `pygls` raises a `Exception` as well in `workspace.TextDocument`.
-            raise ValueError(
-                f"Unable to convert URI to file path: {notebook_document.uri}"
-            )
         return cls(
             uri=notebook_document.uri,
-            path=path,
+            path=_uri_to_fs_path(notebook_document.uri),
             kind=DocumentKind.Notebook,
             source=_create_notebook_json(notebook_document),
             version=notebook_document.version,
@@ -260,22 +263,27 @@ class Document:
 
     @classmethod
     def from_uri(cls, uri: str) -> Self:
-        """Create a `Document` from the given URI.
+        """Create a `Document` representing either a Python file or a Notebook from
+        the given URI.
 
         The URI can be a file URI, a notebook URI, or a cell URI. The function will
         try to get the notebook document first, and if that fails, it will fallback
         to the text document.
         """
+        # First, try to get the Notebook Document assuming the URI is a Cell URI.
         notebook_document = LSP_SERVER.workspace.get_notebook_document(cell_uri=uri)
         if notebook_document is None:
+            # If that fails, try to get the Notebook Document assuming the URI is a
+            # Notebook URI.
             notebook_document = LSP_SERVER.workspace.get_notebook_document(
                 notebook_uri=uri
             )
-        if notebook_document is None:
-            text_document = LSP_SERVER.workspace.get_text_document(uri)
-            return cls.from_text_document(text_document)
-        else:
+        if notebook_document:
             return cls.from_notebook_document(notebook_document)
+
+        # Fall back to the Text Document representing a Python file.
+        text_document = LSP_SERVER.workspace.get_text_document(uri)
+        return cls.from_text_document(text_document)
 
     def is_stdlib_file(self) -> bool:
         """Return True if the document belongs to standard library."""
@@ -284,6 +292,10 @@ class Document:
     def is_notebook_file(self) -> bool:
         """Return True if the document belongs to a Notebook or a cell in a Notebook."""
         return self.kind is DocumentKind.Notebook or self.path.endswith(".ipynb")
+
+    def is_notebook_cell(self) -> bool:
+        """Return True if the document belongs to a cell in a Notebook."""
+        return self.kind is DocumentKind.Text and self.path.endswith(".ipynb")
 
 
 SourceValue = Union[str, List[str]]
@@ -343,6 +355,26 @@ def _create_notebook_json(notebook_document: NotebookDocument) -> str:
             "nbformat": 4,
             "nbformat_minor": 5,
             "cells": cells,
+        }
+    )
+
+
+def _create_single_cell_notebook_json(source: str) -> str:
+    """Create a JSON representation of a single cell Notebook Document containing
+    the given source."""
+    return json.dumps(
+        {
+            "metadata": {},
+            "nbformat": 4,
+            "nbformat_minor": 5,
+            "cells": [
+                {
+                    "cell_type": "code",
+                    "metadata": None,
+                    "outputs": [],
+                    "source": source,
+                }
+            ],
         }
     )
 
@@ -475,6 +507,9 @@ async def _did_change_or_save_notebook(
     cell_diagnostics = _group_diagnostics_by_cell(await _lint_document_impl(document))
 
     # Publish diagnostics for every code cell, replacing the previous diagnostics.
+    # This is required here because a cell containing diagnostics in the first run
+    # might not contain any diagnostics in the second run. In that case, we need to
+    # clear the diagnostics for that cell which is done by publishing empty diagnostics.
     for cell_idx, cell in enumerate(notebook_document.cells):
         if cell.kind is not NotebookCellKind.Code:
             continue
@@ -486,7 +521,9 @@ async def _did_change_or_save_notebook(
 
 
 async def _lint_document_impl(document: Document) -> list[Diagnostic]:
-    result = await _run_check_on_document(document)
+    result = await _run_check_on_document_source(
+        DocumentSource(path=document.path, text=document.source)
+    )
     if result is None:
         return []
     return _parse_output(result.stdout) if result.stdout else []
@@ -737,15 +774,13 @@ class LegacyFix(TypedDict):
 )
 async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     """LSP handler for textDocument/codeAction request."""
-    document = Document.from_uri(params.text_document.uri)
-
-    settings = _get_settings_by_document(document.path)
-
-    if document.is_stdlib_file():
+    document_path = _uri_to_fs_path(params.text_document.uri)
+    if utils.is_stdlib_file(document_path):
         # Don't format standard library files.
-        # Publishing empty diagnostics clears the entry.
+        # Publishing empty list clears the entry.
         return None
 
+    settings = _get_settings_by_document(document_path)
     if settings["organizeImports"]:
         # Generate the "Ruff: Organize Imports" edit
         for kind in (
@@ -757,7 +792,9 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 and len(params.context.only) == 1
                 and kind in params.context.only
             ):
-                workspace_edit = await _fix_document_impl(document, only="I001")
+                workspace_edit = await _fix_document_impl(
+                    Document.from_uri(params.text_document.uri), only="I001"
+                )
                 if workspace_edit:
                     return [
                         CodeAction(
@@ -782,7 +819,9 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 and len(params.context.only) == 1
                 and kind in params.context.only
             ):
-                workspace_edit = await _fix_document_impl(document)
+                workspace_edit = await _fix_document_impl(
+                    Document.from_uri(params.text_document.uri)
+                )
                 if workspace_edit:
                     return [
                         CodeAction(
@@ -807,8 +846,10 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     # Add "Ruff: Autofix" for every fixable diagnostic.
     if settings.get("codeAction", {}).get("fixViolation", {}).get("enable", True):
         if not params.context.only or CodeActionKind.QuickFix in params.context.only:
-            document = Document.from_text_document(
-                LSP_SERVER.workspace.get_text_document(params.text_document.uri)
+            # This is a text document representing either a Python file or a
+            # Notebook cell.
+            text_document = LSP_SERVER.workspace.get_text_document(
+                params.text_document.uri
             )
             for diagnostic in params.context.diagnostics:
                 if diagnostic.source == "Ruff":
@@ -827,7 +868,9 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                                 title=title,
                                 kind=CodeActionKind.QuickFix,
                                 data=params.text_document.uri,
-                                edit=_create_workspace_edit(document, fix),
+                                edit=_create_workspace_edit(
+                                    text_document.uri, text_document.version, fix
+                                ),
                                 diagnostics=[diagnostic],
                             ),
                         )
@@ -835,8 +878,10 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     # Add "Disable for this line" for every diagnostic.
     if settings.get("codeAction", {}).get("disableRuleComment", {}).get("enable", True):
         if not params.context.only or CodeActionKind.QuickFix in params.context.only:
-            document = Document.from_text_document(
-                LSP_SERVER.workspace.get_text_document(params.text_document.uri)
+            # This is a text document representing either a Python file or a
+            # Notebook cell.
+            text_document = LSP_SERVER.workspace.get_text_document(
+                params.text_document.uri
             )
             lines: list[str] | None = None
             for diagnostic in params.context.diagnostics:
@@ -844,7 +889,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     noqa_row = cast(DiagnosticData, diagnostic.data).get("noqa_row")
                     if noqa_row is not None:
                         if lines is None:
-                            lines = document.source.splitlines(keepends=True)
+                            lines = text_document.lines
                         line = lines[noqa_row - 1].rstrip("\r\n")
 
                         match = NOQA_REGEX.search(line)
@@ -885,7 +930,9 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                                 title=title,
                                 kind=CodeActionKind.QuickFix,
                                 data=params.text_document.uri,
-                                edit=_create_workspace_edit(document, fix),
+                                edit=_create_workspace_edit(
+                                    text_document.uri, text_document.version, fix
+                                ),
                                 diagnostics=[diagnostic],
                             ),
                         )
@@ -906,7 +953,9 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     ),
                 )
             else:
-                workspace_edit = await _fix_document_impl(document, only="I001")
+                workspace_edit = await _fix_document_impl(
+                    Document.from_uri(params.text_document.uri), only="I001"
+                )
                 if workspace_edit:
                     actions.append(
                         CodeAction(
@@ -934,7 +983,9 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                     ),
                 )
             else:
-                workspace_edit = await _fix_document_impl(document)
+                workspace_edit = await _fix_document_impl(
+                    Document.from_uri(params.text_document.uri)
+                )
                 if workspace_edit:
                     actions.append(
                         CodeAction(
@@ -981,32 +1032,32 @@ async def resolve_code_action(params: CodeAction) -> CodeAction:
 
 
 @LSP_SERVER.command("ruff.applyAutofix")
-async def apply_autofix(ls: server.LanguageServer, arguments: tuple[TextDocument]):
+async def apply_autofix(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     document = Document.from_uri(uri)
     workspace_edit = await _fix_document_impl(document)
     if workspace_edit is None:
         return
-    ls.apply_edit(workspace_edit, "Ruff: Fix all auto-fixable problems")
+    LSP_SERVER.apply_edit(workspace_edit, "Ruff: Fix all auto-fixable problems")
 
 
 @LSP_SERVER.command("ruff.applyOrganizeImports")
-async def apply_organize_imports(
-    ls: server.LanguageServer, arguments: tuple[TextDocument]
-):
+async def apply_organize_imports(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     document = Document.from_uri(uri)
     workspace_edit = await _fix_document_impl(document, only="I001")
     if workspace_edit is None:
         return
-    ls.apply_edit(workspace_edit, "Ruff: Format imports")
+    LSP_SERVER.apply_edit(workspace_edit, "Ruff: Format imports")
 
 
 @LSP_SERVER.command("ruff.applyFormat")
 async def apply_format(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     document = Document.from_uri(uri)
-    results = await _run_format_on_document(document)
+    results = await _run_format_on_document_source(
+        DocumentSource(path=document.path, text=document.source)
+    )
     workspace_edit = _result_to_workspace_edit(document, results)
     if workspace_edit is None:
         return
@@ -1014,24 +1065,48 @@ async def apply_format(arguments: tuple[TextDocument]):
 
 
 @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
-async def format_document(
-    ls: server.LanguageServer,
-    params: DocumentFormattingParams,
-) -> list[TextEdit] | None:
+async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | None:
     # For a Jupyter Notebook, this request can only format a single cell as the
     # request itself can only act on a text document. A cell in a Notebook is
     # represented as a text document.
     document = Document.from_text_document(
-        ls.workspace.get_text_document(params.text_document.uri)
+        LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     )
-    result = await _run_format_on_document(document)
-    if result is None:
-        return None
-    return _fixed_source_to_edits(
-        original_source=document.source,
-        fixed_source=result.stdout.decode("utf-8"),
-        is_notebook_file=document.is_notebook_file(),
-    )
+    if document.is_notebook_cell():
+        result = await _run_format_on_document_source(
+            DocumentSource(
+                path=document.path,
+                text=_create_single_cell_notebook_json(document.source),
+            )
+        )
+        if result is None:
+            return None
+
+        output_notebook = cast(Notebook, json.loads(result.stdout.decode("utf-8")))
+        # The input notebook contained only one cell, so the output notebook should
+        # also contain only one cell.
+        output_cell = next(iter(output_notebook["cells"]), None)
+        if output_cell is None or output_cell["cell_type"] != "code":
+            log_warning(
+                f"Unexpected output when formatting a notebook cell: {output_notebook}"
+            )
+            return None
+        return _fixed_source_to_edits(
+            original_source=document.source,
+            fixed_source=output_cell["source"],
+            is_notebook_file=True,
+        )
+    else:
+        result = await _run_format_on_document_source(
+            DocumentSource(path=document.path, text=document.source)
+        )
+        if result is None:
+            return None
+        return _fixed_source_to_edits(
+            original_source=document.source,
+            fixed_source=result.stdout.decode("utf-8"),
+            is_notebook_file=document.is_notebook_file(),
+        )
 
 
 async def _fix_document_impl(
@@ -1039,8 +1114,8 @@ async def _fix_document_impl(
     *,
     only: str | None = None,
 ) -> WorkspaceEdit | None:
-    result = await _run_check_on_document(
-        document,
+    result = await _run_check_on_document_source(
+        DocumentSource(path=document.path, text=document.source),
         extra_args=["--fix"],
         only=only,
     )
@@ -1153,13 +1228,13 @@ def _create_text_document_edit(
     )
 
 
-def _create_workspace_edit(document: Document, fix: Fix) -> WorkspaceEdit:
+def _create_workspace_edit(uri: str, version: int | None, fix: Fix) -> WorkspaceEdit:
     return WorkspaceEdit(
         document_changes=[
             TextDocumentEdit(
                 text_document=OptionalVersionedTextDocumentIdentifier(
-                    uri=document.uri,
-                    version=0 if document.version is None else document.version,
+                    uri=uri,
+                    version=0 if version is None else version,
                 ),
                 edits=[
                     TextEdit(
@@ -1488,18 +1563,28 @@ def _executable_version(executable: str) -> Version:
     return EXECUTABLE_VERSIONS[executable].version
 
 
-async def _run_check_on_document(
-    document: Document,
+class DocumentSource(NamedTuple):
+    """The source of a document."""
+
+    path: str
+    """The path to the document."""
+
+    text: str
+    """The text of the document."""
+
+
+async def _run_check_on_document_source(
+    source: DocumentSource,
     *,
     extra_args: Sequence[str] = [],
     only: str | None = None,
 ) -> RunResult | None:
-    """Runs the Ruff `check` subcommand  on the given document."""
-    if document.is_stdlib_file():
-        log_warning(f"Skipping standard library file: {document.path}")
+    """Runs the Ruff `check` subcommand  on the given document source."""
+    if utils.is_stdlib_file(source.path):
+        log_warning(f"Skipping standard library file: {source.path}")
         return None
 
-    settings = _get_settings_by_document(document.path)
+    settings = _get_settings_by_document(source.path)
 
     executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_LINTER)
     argv: list[str] = CHECK_ARGS + list(extra_args)
@@ -1529,30 +1614,30 @@ async def _run_check_on_document(
         argv += ["--extend-select", only]
 
     # Provide the document filename.
-    argv += ["--stdin-filename", document.path]
+    argv += ["--stdin-filename", source.path]
 
     return await run_path(
         executable.path,
         argv,
         cwd=settings["cwd"],
-        source=document.source,
+        source=source.text,
     )
 
 
-async def _run_format_on_document(document: Document) -> RunResult | None:
-    """Runs the Ruff `format` subcommand on the given document."""
-    if document.is_stdlib_file():
-        log_warning(f"Skipping standard library file: {document.path}")
+async def _run_format_on_document_source(source: DocumentSource) -> RunResult | None:
+    """Runs the Ruff `format` subcommand on the given document source."""
+    if utils.is_stdlib_file(source.path):
+        log_warning(f"Skipping standard library file: {source.path}")
         return None
 
-    settings = _get_settings_by_document(document.path)
+    settings = _get_settings_by_document(source.path)
     executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_FORMATTER)
     argv: list[str] = [
         "format",
         "--force-exclude",
         "--quiet",
         "--stdin-filename",
-        document.path,
+        source.path,
     ]
 
     for arg in settings.get("format", {}).get("args", []):
@@ -1565,7 +1650,7 @@ async def _run_format_on_document(document: Document) -> RunResult | None:
         executable.path,
         argv,
         cwd=settings["cwd"],
-        source=document.source,
+        source=source.text,
     )
 
 

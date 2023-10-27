@@ -9,8 +9,9 @@ from pygls.workspace import Workspace
 from ruff_lsp.server import (
     VERSION_REQUIREMENT_FORMATTER,
     Document,
+    DocumentSource,
     _fixed_source_to_edits,
-    _run_format_on_document,
+    _run_format_on_document_source,
 )
 from tests.client import utils
 
@@ -38,7 +39,9 @@ async def test_format(tmp_path, ruff_version: Version):
     )
 
     with handle_unsupported:
-        result = await _run_format_on_document(document)
+        result = await _run_format_on_document_source(
+            DocumentSource(path=document.path, text=document.source)
+        )
         assert result is not None
         [edit] = _fixed_source_to_edits(
             original_source=document.source,
