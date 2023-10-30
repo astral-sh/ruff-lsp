@@ -44,8 +44,6 @@ async def test_format(tmp_path, ruff_version: Version):
         )
         assert result is not None
         [edit] = _fixed_source_to_edits(
-            original_source=document.source,
-            fixed_source=result.stdout.decode("utf-8"),
-            is_notebook_file=document.is_notebook_file(),
+            original_source=document.source, fixed_source=result.stdout.decode("utf-8")
         )
         assert edit.new_text == expected

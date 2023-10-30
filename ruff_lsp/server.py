@@ -773,7 +773,21 @@ class LegacyFix(TypedDict):
     ),
 )
 async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
-    """LSP handler for textDocument/codeAction request."""
+    """LSP handler for textDocument/codeAction request.
+
+    There are two scopes for code actions:
+    - Source: The whole file.
+    - QuickFix: A single diagnostic.
+
+    For source level code actions, we create a `Document` from the URI such that it
+    represents either a Python file or a Notebook. On the other hand, for quick fix
+    code actions, we use the `TextDocument` abstraction from `pygls` which represents
+    either a Python file or a cell in a Notebook.
+
+    For a Notebook cell, the `TextDocument` works because we don't need to know the
+    content of the entire Notebook. The fix is already available in the code action
+    context.
+    """
     document_path = _uri_to_fs_path(params.text_document.uri)
     if utils.is_stdlib_file(document_path):
         # Don't format standard library files.
@@ -1092,9 +1106,7 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
             )
             return None
         return _fixed_source_to_edits(
-            original_source=document.source,
-            fixed_source=output_cell["source"],
-            is_notebook_file=True,
+            original_source=document.source, fixed_source=output_cell["source"]
         )
     else:
         result = await _run_format_on_document_source(
@@ -1103,9 +1115,7 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
         if result is None:
             return None
         return _fixed_source_to_edits(
-            original_source=document.source,
-            fixed_source=result.stdout.decode("utf-8"),
-            is_notebook_file=document.is_notebook_file(),
+            original_source=document.source, fixed_source=result.stdout.decode("utf-8")
         )
 
 
@@ -1131,9 +1141,7 @@ def _result_to_workspace_edit(
 
     if document.kind is DocumentKind.Text:
         edits = _fixed_source_to_edits(
-            original_source=document.source,
-            fixed_source=result.stdout.decode("utf-8"),
-            is_notebook_file=document.is_notebook_file(),
+            original_source=document.source, fixed_source=result.stdout.decode("utf-8")
         )
         return WorkspaceEdit(
             document_changes=[
@@ -1167,7 +1175,6 @@ def _result_to_workspace_edit(
             edits = _fixed_source_to_edits(
                 original_source=cell_document.source,
                 fixed_source=output_notebook_cells[cell_idx]["source"],
-                is_notebook_file=True,
             )
             cell_document_changes.append(
                 _create_text_document_edit(
@@ -1183,7 +1190,7 @@ def _result_to_workspace_edit(
 
 
 def _fixed_source_to_edits(
-    *, original_source: str, fixed_source: str | list[str], is_notebook_file: bool
+    *, original_source: str, fixed_source: str | list[str]
 ) -> list[TextEdit]:
     """Converts the fixed source to a list of TextEdits.
 
@@ -1194,14 +1201,6 @@ def _fixed_source_to_edits(
         fixed_source = "".join(fixed_source)
 
     new_source = _match_line_endings(original_source, fixed_source)
-
-    # Skip last line ending in a notebook cell.
-    if is_notebook_file:
-        if new_source.endswith("\r\n"):
-            new_source = new_source[:-2]
-        elif new_source.endswith("\n"):
-            new_source = new_source[:-1]
-
     if new_source == original_source:
         return []
 
