@@ -1157,11 +1157,30 @@ async def _run_check_on_document(
     executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_LINTER)
     argv: list[str] = CHECK_ARGS + list(extra_args)
 
+    skip_next_arg = False
     for arg in lint_args(settings):
+        if skip_next_arg:
+            skip_next_arg = False
+            continue
         if arg in UNSUPPORTED_CHECK_ARGS:
             log_to_output(f"Ignoring unsupported argument: {arg}")
-        else:
-            argv.append(arg)
+            continue
+        # If we're trying to run a single rule, we need to make sure to skip any of the
+        # arguments that would override it.
+        if only:
+            # Case 1: Option and it's argument as separate items
+            # (e.g. `["--select", "F821"]`).
+            if arg in ("--select", "--extend-select", "--ignore", "--extend-ignore"):
+                # Skip the following argument assuming it's a list of rules.
+                skip_next_arg = True
+                continue
+            # Case 2: Option and it's argument as a single item
+            # (e.g. `["--select=F821"]`).
+            elif arg.startswith(
+                ("--select=", "--extend-select=", "--ignore=", "--extend-ignore=")
+            ):
+                continue
+        argv.append(arg)
 
     # If the Ruff version is not sufficiently recent, use the deprecated `--format`
     # argument instead of `--output-format`.
@@ -1172,14 +1191,9 @@ async def _run_check_on_document(
         argv.pop(index)
         argv.insert(index, "--format")
 
-    # If we're trying to run a single rule, add it to the command line, and disable
-    # all other rules (if the Ruff version is sufficiently recent).
+    # If we're trying to run a single rule, add it to the command line.
     if only:
-        if VERSION_REQUIREMENT_ALL_SELECTOR.contains(
-            executable.version, prereleases=True
-        ):
-            argv += ["--extend-ignore", "ALL"]
-        argv += ["--extend-select", only]
+        argv += ["--select", only]
 
     # Provide the document filename.
     argv += ["--stdin-filename", document.path]
