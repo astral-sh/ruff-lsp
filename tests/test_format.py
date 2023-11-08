@@ -8,7 +8,9 @@ from pygls.workspace import Workspace
 
 from ruff_lsp.server import (
     VERSION_REQUIREMENT_FORMATTER,
-    _format_document_impl,
+    Document,
+    _fixed_source_to_edits,
+    _run_format_on_document,
 )
 from tests.client import utils
 
@@ -27,7 +29,7 @@ async def test_format(tmp_path, ruff_version: Version):
     uri = utils.as_uri(str(test_file))
 
     workspace = Workspace(str(tmp_path))
-    document = workspace.get_text_document(uri)
+    document = Document.from_text_document(workspace.get_text_document(uri))
 
     handle_unsupported = (
         pytest.raises(RuntimeError, match=f"Ruff .* required, but found {ruff_version}")
@@ -36,6 +38,9 @@ async def test_format(tmp_path, ruff_version: Version):
     )
 
     with handle_unsupported:
-        result = await _format_document_impl(document)
-        [edit] = result
+        result = await _run_format_on_document(document)
+        assert result is not None
+        [edit] = _fixed_source_to_edits(
+            original_source=document.source, fixed_source=result.stdout.decode("utf-8")
+        )
         assert edit.new_text == expected

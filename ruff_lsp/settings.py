@@ -1,8 +1,19 @@
 from __future__ import annotations
 
+import enum
+
 from typing_extensions import Literal, TypedDict
 
-Run = Literal["onSave", "onType"]
+
+@enum.unique
+class Run(str, enum.Enum):
+    """When to run Ruff."""
+
+    OnType = "onType"
+    """Run Ruff on every keystroke."""
+
+    OnSave = "onSave"
+    """Run Ruff on save."""
 
 
 class UserSettings(TypedDict, total=False):
@@ -94,8 +105,8 @@ def lint_args(settings: UserSettings) -> list[str]:
 def lint_run(settings: UserSettings) -> Run:
     """Get the `lint.run` setting from the user settings."""
     if "lint" in settings and "run" in settings["lint"]:
-        return settings["lint"]["run"]
+        return Run(settings["lint"]["run"])
     elif "run" in settings:
-        return settings["run"]
+        return Run(settings["run"])
     else:
-        return "onType"
+        return Run.OnType
