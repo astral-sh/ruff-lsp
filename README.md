@@ -221,11 +221,22 @@ the LSP client's `settings.json`:
 
 Ruff's automatic fixes are labeled as "safe" and "unsafe". By default, the "Fix all" action will not apply unsafe
 fixes. However, unsafe fixes can be applied manually with the "Quick fix" action. Application of unsafe fixes when
-using "Fix all" can be enabled by setting `unsafe-fixes = true` in your Ruff configuration file or adding 
+using "Fix all" can be enabled by setting `unsafe-fixes = true` in your Ruff configuration file or adding
 `--unsafe-fixes` flag to the "Lint args" setting.
 
 See the [Ruff fix docs](https://docs.astral.sh/ruff/configuration/#fix-safety) for more details on how fix
 safety works.
+
+## Jupyter Notebook Support
+
+`ruff-lsp` has support for Jupyter Notebooks via the [Notebook Document Synchronization] capabilities of the Language
+Server Protocol which were added in 3.17. This allows `ruff-lsp` to provide full support for all of the existing capabilities
+available for Python files in Jupyter Notebooks, including diagnostics, code actions, and formatting.
+
+This requires clients, such as Visual Studio Code, to support the notebook-related capabilities. In addition to the editor support,
+it also requires Ruff version `v0.1.3` or later.
+
+[Notebook Document Synchronization]: https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notebookDocument_synchronization
 
 ## Settings
 
