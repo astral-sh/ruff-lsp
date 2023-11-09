@@ -1096,6 +1096,8 @@ async def apply_format(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     document = Document.from_uri(uri)
     results = await _run_format_on_document(document)
+    if results.exit_code != 0:
+        return
     workspace_edit = _result_to_workspace_edit(document, results)
     if workspace_edit is None:
         return
@@ -1109,6 +1111,10 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
     # represented as a text document.
     document = Document.from_cell_or_text_uri(params.text_document.uri)
     result = await _run_format_on_document(document)
+
+    if result.exit_code != 0:
+        return
+
     if result is None:
         return None
 
