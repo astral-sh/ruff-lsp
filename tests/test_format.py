@@ -50,7 +50,7 @@ async def test_format(tmp_path, ruff_version: Version):
 @pytest.mark.asyncio
 async def test_format_code_with_syntax_error(tmp_path, ruff_version: Version):
     source = """
-foo = 
+foo =
 """
 
     test_file = tmp_path.joinpath("main.py")
