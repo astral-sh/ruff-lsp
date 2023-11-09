@@ -40,6 +40,7 @@ async def test_format(tmp_path, ruff_version: Version):
     with handle_unsupported:
         result = await _run_format_on_document(document)
         assert result is not None
+        assert result.exit_code == 0
         [edit] = _fixed_source_to_edits(
             original_source=document.source, fixed_source=result.stdout.decode("utf-8")
         )
@@ -48,7 +49,7 @@ async def test_format(tmp_path, ruff_version: Version):
 
 @pytest.mark.asyncio
 async def test_format_code_with_syntax_error(tmp_path, ruff_version: Version):
-    source =  """
+    source = """
 foo = 
 """
 
@@ -68,7 +69,4 @@ foo =
     with handle_unsupported:
         result = await _run_format_on_document(document)
         assert result is not None
-        [edit] = _fixed_source_to_edits(
-            original_source=document.source, fixed_source=result.stdout.decode("utf-8")
-        )
-        assert edit.new_text == source
+        assert result.exit_code == 2

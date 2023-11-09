@@ -1330,7 +1330,10 @@ async def run_path(
         stdin=asyncio.subprocess.PIPE,
         cwd=cwd,
     )
-    result = RunResult(*await process.communicate(input=source.encode("utf-8")))
+    result = RunResult(
+        *await process.communicate(input=source.encode("utf-8")),
+        exit_code=await process.wait(),
+    )
 
     if result.stderr:
         log_to_output(result.stderr.decode("utf-8"))
