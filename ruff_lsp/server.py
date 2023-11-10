@@ -1114,7 +1114,10 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
     document = Document.from_cell_or_text_uri(params.text_document.uri)
 
     result = await _run_format_on_document(document)
-    if result is None or result.exit_code != 0:
+    if result is None or result.exit_code:
+        return None
+
+    if not result.stdout and document.source.strip():
         return None
 
     if document.kind is DocumentKind.Cell:
@@ -1143,6 +1146,9 @@ def _result_to_workspace_edit(
 ) -> WorkspaceEdit | None:
     """Converts a run result to a WorkspaceEdit."""
     if result is None:
+        return None
+
+    if not result.stdout and document.source.strip():
         return None
 
     if document.kind is DocumentKind.Text:
