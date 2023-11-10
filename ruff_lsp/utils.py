@@ -7,7 +7,7 @@ import os.path
 import site
 import subprocess
 import sys
-from typing import Any
+from typing import Any, NamedTuple
 
 from packaging.version import Version
 
@@ -66,10 +66,14 @@ def version(executable: str) -> Version:
     return Version(version)
 
 
-class RunResult:
+class RunResult(NamedTuple):
     """Object to hold result from running tool."""
 
-    def __init__(self, stdout: bytes, stderr: bytes, exit_code: int):
-        self.stdout: bytes = stdout
-        self.stderr: bytes = stderr
-        self.exit_code: int = exit_code
+    stdout: bytes
+    """The stdout of running the executable."""
+
+    stderr: bytes
+    """The stderr of running the executable."""
+
+    exit_code: int
+    """The exit code of running the executable."""
