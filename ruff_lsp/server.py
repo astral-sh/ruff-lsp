@@ -1095,12 +1095,14 @@ async def apply_organize_imports(arguments: tuple[TextDocument]):
 async def apply_format(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     document = Document.from_uri(uri)
-    results = await _run_format_on_document(document)
-    if results.exit_code != 0:
-        return
-    workspace_edit = _result_to_workspace_edit(document, results)
+
+    result = await _run_format_on_document(document)
+    if result is None or result.exit_code != 0:
+        return None
+
+    workspace_edit = _result_to_workspace_edit(document, result)
     if workspace_edit is None:
-        return
+        return None
     LSP_SERVER.apply_edit(workspace_edit, "Ruff: Format document")
 
 
@@ -1110,12 +1112,9 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
     # request itself can only act on a text document. A cell in a Notebook is
     # represented as a text document.
     document = Document.from_cell_or_text_uri(params.text_document.uri)
+
     result = await _run_format_on_document(document)
-
-    if result.exit_code != 0:
-        return
-
-    if result is None:
+    if result is None or result.exit_code != 0:
         return None
 
     if document.kind is DocumentKind.Cell:
