@@ -140,10 +140,10 @@ TOOL_DISPLAY = "Ruff"
 # Require at least Ruff v0.0.291 for formatting, but allow older versions for linting.
 VERSION_REQUIREMENT_FORMATTER = SpecifierSet(">=0.0.291,<0.2.0")
 VERSION_REQUIREMENT_LINTER = SpecifierSet(">=0.0.189,<0.2.0")
-# Version requirement for use of the "ALL" rule selector
-VERSION_REQUIREMENT_ALL_SELECTOR = SpecifierSet(">=0.0.198,<0.2.0")
 # Version requirement for use of the `--output-format` option
 VERSION_REQUIREMENT_OUTPUT_FORMAT = SpecifierSet(">=0.0.291,<0.2.0")
+# Version requirement after which Ruff avoids writing empty output for excluded files.
+VERSION_REQUIREMENT_EMPTY_OUTPUT = SpecifierSet(">=0.1.6,<0.2.0")
 
 # Arguments provided to every Ruff invocation.
 CHECK_ARGS = [
@@ -1117,8 +1117,11 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
     if result is None or result.exit_code:
         return None
 
-    if not result.stdout and document.source.strip():
-        return None
+    if not VERSION_REQUIREMENT_EMPTY_OUTPUT.contains(
+        result.executable.version, prereleases=True
+    ):
+        if not result.stdout and document.source.strip():
+            return None
 
     if document.kind is DocumentKind.Cell:
         return _result_single_cell_notebook_to_edits(document, result)
@@ -1142,14 +1145,17 @@ async def _fix_document_impl(
 
 
 def _result_to_workspace_edit(
-    document: Document, result: RunResult | None
+    document: Document, result: ExecutableResult | None
 ) -> WorkspaceEdit | None:
     """Converts a run result to a WorkspaceEdit."""
     if result is None:
         return None
 
-    if not result.stdout and document.source.strip():
-        return None
+    if not VERSION_REQUIREMENT_EMPTY_OUTPUT.contains(
+        result.executable.version, prereleases=True
+    ):
+        if not result.stdout and document.source.strip():
+            return None
 
     if document.kind is DocumentKind.Text:
         edits = _fixed_source_to_edits(
@@ -1211,7 +1217,7 @@ def _result_to_workspace_edit(
 
 
 def _result_single_cell_notebook_to_edits(
-    document: Document, result: RunResult
+    document: Document, result: ExecutableResult
 ) -> list[TextEdit] | None:
     """Converts a run result to a list of TextEdits.
 
@@ -1519,6 +1525,20 @@ class Executable(NamedTuple):
     """The version of the executable."""
 
 
+class ExecutableResult(NamedTuple):
+    executable: Executable
+    """The executable."""
+
+    stdout: bytes
+    """The stdout of running the executable."""
+
+    stderr: bytes
+    """The stderr of running the executable."""
+
+    exit_code: int
+    """The exit code of running the executable."""
+
+
 def _find_ruff_binary(
     settings: WorkspaceSettings, version_requirement: SpecifierSet | None
 ) -> Executable:
@@ -1615,7 +1635,7 @@ async def _run_check_on_document(
     *,
     extra_args: Sequence[str] = [],
     only: str | None = None,
-) -> RunResult | None:
+) -> ExecutableResult | None:
     """Runs the Ruff `check` subcommand  on the given document source."""
     if document.is_stdlib_file():
         log_warning(f"Skipping standard library file: {document.path}")
@@ -1637,13 +1657,13 @@ async def _run_check_on_document(
         # If we're trying to run a single rule, we need to make sure to skip any of the
         # arguments that would override it.
         if only:
-            # Case 1: Option and it's argument as separate items
+            # Case 1: Option and its argument as separate items
             # (e.g. `["--select", "F821"]`).
             if arg in ("--select", "--extend-select", "--ignore", "--extend-ignore"):
                 # Skip the following argument assuming it's a list of rules.
                 skip_next_arg = True
                 continue
-            # Case 2: Option and it's argument as a single item
+            # Case 2: Option and its argument as a single item
             # (e.g. `["--select=F821"]`).
             elif arg.startswith(
                 ("--select=", "--extend-select=", "--ignore=", "--extend-ignore=")
@@ -1667,15 +1687,18 @@ async def _run_check_on_document(
     # Provide the document filename.
     argv += ["--stdin-filename", document.path]
 
-    return await run_path(
-        executable.path,
-        argv,
-        cwd=settings["cwd"],
-        source=document.source,
+    return ExecutableResult(
+        executable,
+        *await run_path(
+            executable.path,
+            argv,
+            cwd=settings["cwd"],
+            source=document.source,
+        ),
     )
 
 
-async def _run_format_on_document(document: Document) -> RunResult | None:
+async def _run_format_on_document(document: Document) -> ExecutableResult | None:
     """Runs the Ruff `format` subcommand on the given document source."""
     if document.is_stdlib_file():
         log_warning(f"Skipping standard library file: {document.path}")
@@ -1697,11 +1720,14 @@ async def _run_format_on_document(document: Document) -> RunResult | None:
         else:
             argv.append(arg)
 
-    return await run_path(
-        executable.path,
-        argv,
-        cwd=settings["cwd"],
-        source=document.source,
+    return ExecutableResult(
+        executable,
+        *await run_path(
+            executable.path,
+            argv,
+            cwd=settings["cwd"],
+            source=document.source,
+        ),
     )
 
 
@@ -1710,17 +1736,21 @@ async def _run_subcommand_on_document(
     version_requirement: SpecifierSet,
     *,
     args: Sequence[str],
-) -> RunResult:
+) -> ExecutableResult:
     """Runs the tool subcommand on the given document."""
     settings = _get_settings_by_document(document.path)
 
     executable = _find_ruff_binary(settings, version_requirement)
     argv: list[str] = list(args)
-    return await run_path(
-        executable.path,
-        argv,
-        cwd=settings["cwd"],
-        source=document.source,
+
+    return ExecutableResult(
+        executable,
+        *await run_path(
+            executable.path,
+            argv,
+            cwd=settings["cwd"],
+            source=document.source,
+        ),
     )
 
 
