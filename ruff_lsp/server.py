@@ -832,7 +832,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
             ):
                 workspace_edit = await _fix_document_impl(
                     Document.from_cell_or_text_uri(params.text_document.uri),
-                    only="I001",
+                    only=["I001", "I002"],
                 )
                 if workspace_edit:
                     return [
@@ -994,7 +994,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
             else:
                 workspace_edit = await _fix_document_impl(
                     Document.from_cell_or_text_uri(params.text_document.uri),
-                    only="I001",
+                    only=["I001", "I002"],
                 )
                 if workspace_edit:
                     actions.append(
@@ -1059,7 +1059,7 @@ async def resolve_code_action(params: CodeAction) -> CodeAction:
         f"{CodeActionKind.SourceOrganizeImports.value}.ruff",
     ):
         # Generate the "Ruff: Organize Imports" edit
-        params.edit = await _fix_document_impl(document, only="I001")
+        params.edit = await _fix_document_impl(document, only=["I001", "I002"])
 
     elif settings["fixAll"] and params.kind in (
         CodeActionKind.SourceFixAll,
@@ -1085,7 +1085,7 @@ async def apply_autofix(arguments: tuple[TextDocument]):
 async def apply_organize_imports(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     document = Document.from_uri(uri)
-    workspace_edit = await _fix_document_impl(document, only="I001")
+    workspace_edit = await _fix_document_impl(document, only=["I001", "I002"])
     if workspace_edit is None:
         return
     LSP_SERVER.apply_edit(workspace_edit, "Ruff: Format imports")
@@ -1134,7 +1134,7 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
 async def _fix_document_impl(
     document: Document,
     *,
-    only: str | None = None,
+    only: Sequence[str] | None = None,
 ) -> WorkspaceEdit | None:
     result = await _run_check_on_document(
         document,
@@ -1634,7 +1634,7 @@ async def _run_check_on_document(
     document: Document,
     *,
     extra_args: Sequence[str] = [],
-    only: str | None = None,
+    only: Sequence[str] | None = None,
 ) -> ExecutableResult | None:
     """Runs the Ruff `check` subcommand  on the given document source."""
     if document.is_stdlib_file():
@@ -1656,7 +1656,7 @@ async def _run_check_on_document(
             continue
         # If we're trying to run a single rule, we need to make sure to skip any of the
         # arguments that would override it.
-        if only:
+        if only is not None:
             # Case 1: Option and its argument as separate items
             # (e.g. `["--select", "F821"]`).
             if arg in ("--select", "--extend-select", "--ignore", "--extend-ignore"):
@@ -1681,8 +1681,9 @@ async def _run_check_on_document(
         argv.insert(index, "--format")
 
     # If we're trying to run a single rule, add it to the command line.
-    if only:
-        argv += ["--select", only]
+    if only is not None:
+        for rule in only:
+            argv += ["--select", rule]
 
     # Provide the document filename.
     argv += ["--stdin-filename", document.path]
