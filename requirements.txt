@@ -24,9 +24,9 @@ importlib-metadata==6.7.0 \
     # via
     #   attrs
     #   typeguard
-lsprotocol==2023.0.0b1 \
-    --hash=sha256:ade2cd0fa0ede7965698cb59cd05d3adbd19178fd73e83f72ef57a032fbb9d62 \
-    --hash=sha256:f7a2d4655cbd5639f373ddd1789807450c543341fa0a32b064ad30dbb9f510d4
+lsprotocol==2023.0.0 \
+    --hash=sha256:c9d92e12a3f4ed9317d3068226592860aab5357d93cf5b2451dc244eee8f35f2 \
+    --hash=sha256:e85fc87ee26c816adca9eb497bb3db1a7c79c477a11563626e712eaccf926a05
     # via
     #   pygls
     #   ruff-lsp (pyproject.toml)
