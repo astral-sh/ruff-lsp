@@ -34,9 +34,9 @@ packaging==23.2 \
     --hash=sha256:048fb0e9405036518eaaf48a55953c750c11e1a1b68e0dd1a9d62ed0c092cfc5 \
     --hash=sha256:8c491190033a9af7e1d931d0b5dacc2ef47509b34dd0de67ed209b5203fc88c7
     # via ruff-lsp (pyproject.toml)
-pygls==1.1.2 \
-    --hash=sha256:783d29c93679bb6756772f2de9b9f53b1a6fdf3fba66aeca23e87aa8aab20ecf \
-    --hash=sha256:93fe17c01fd03307774290e685e7fa25bc1411cd72f243ff33eef21927fd0ad5
+pygls==1.2.0 \
+    --hash=sha256:72ec4a3532741be1a933c686ed1e138b9948af174213745527a7c3ed3147a573 \
+    --hash=sha256:e4ddf2fd27fd68a47644e25e7adc7e1810cf169b76f61f9e65ad6abae5814cf2
     # via ruff-lsp (pyproject.toml)
 ruff==0.1.5 \
     --hash=sha256:171276c1df6c07fa0597fb946139ced1c2978f4f0b8254f201281729981f3c17 \
