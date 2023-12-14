@@ -558,6 +558,14 @@ async def _lint_document_impl(document: Document) -> list[Diagnostic]:
     result = await _run_check_on_document(document)
     if result is None:
         return []
+
+    # For `ruff check`, 0 indicates successful completion with no remaining
+    # diagnostics, 1 indicates successful completion with remaining diagnostics,
+    # and 2 indicates an error.
+    if result.exit_code not in (0, 1):
+        show_error(f"Ruff: Lint failed ({result.stderr.decode('utf-8')})")
+        return []
+
     return _parse_output(result.stdout) if result.stdout else []
 
 
@@ -1097,7 +1105,12 @@ async def apply_format(arguments: tuple[TextDocument]):
     document = Document.from_uri(uri)
 
     result = await _run_format_on_document(document)
-    if result is None or result.exit_code != 0:
+    if result is None:
+        return None
+
+    # For `ruff format`, 0 indicates successful completion, non-zero indicates an error.
+    if result.exit_code != 0:
+        show_error(f"Ruff: Format failed ({result.stderr.decode('utf-8')})")
         return None
 
     workspace_edit = _result_to_workspace_edit(document, result)
@@ -1114,7 +1127,12 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
     document = Document.from_cell_or_text_uri(params.text_document.uri)
 
     result = await _run_format_on_document(document)
-    if result is None or result.exit_code:
+    if result is None:
+        return None
+
+    # For `ruff format`, 0 indicates successful completion, non-zero indicates an error.
+    if result.exit_code != 0:
+        show_error(f"Ruff: Format failed ({result.stderr.decode('utf-8')})")
         return None
 
     if not VERSION_REQUIREMENT_EMPTY_OUTPUT.contains(
@@ -1141,6 +1159,17 @@ async def _fix_document_impl(
         extra_args=["--fix"],
         only=only,
     )
+
+    if result is None:
+        return None
+
+    # For `ruff check`, 0 indicates successful completion with no remaining
+    # diagnostics, 1 indicates successful completion with remaining diagnostics,
+    # and 2 indicates an error.
+    if result.exit_code not in (0, 1):
+        show_error(f"Ruff: Fix failed ({result.stderr.decode('utf-8')})")
+        return None
+
     return _result_to_workspace_edit(document, result)
 
 
