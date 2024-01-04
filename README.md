@@ -224,7 +224,7 @@ fixes. However, unsafe fixes can be applied manually with the "Quick fix" action
 using "Fix all" can be enabled by setting `unsafe-fixes = true` in your Ruff configuration file or adding
 `--unsafe-fixes` flag to the "Lint args" setting.
 
-See the [Ruff fix docs](https://docs.astral.sh/ruff/configuration/#fix-safety) for more details on how fix
+See the [Ruff fix docs](https://docs.astral.sh/ruff/linter/#fix-safety) for more details on how fix
 safety works.
 
 ## Jupyter Notebook Support
