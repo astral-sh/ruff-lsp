@@ -204,6 +204,22 @@ UNSUPPORTED_FORMAT_ARGS = [
     # "--stdin-filename",
 ]
 
+# Standard code action kinds, scoped to Ruff.
+SOURCE_FIX_ALL_RUFF = f"{CodeActionKind.SourceFixAll.value}.ruff"
+SOURCE_ORGANIZE_IMPORTS_RUFF = f"{CodeActionKind.SourceOrganizeImports.value}.ruff"
+
+# Notebook code action kinds.
+NOTEBOOK_SOURCE_FIX_ALL = f"notebook.{CodeActionKind.SourceFixAll.value}"
+NOTEBOOK_SOURCE_ORGANIZE_IMPORTS = (
+    f"notebook.{CodeActionKind.SourceOrganizeImports.value}"
+)
+
+# Notebook code action kinds, scoped to Ruff.
+NOTEBOOK_SOURCE_FIX_ALL_RUFF = f"notebook.{CodeActionKind.SourceFixAll.value}.ruff"
+NOTEBOOK_SOURCE_ORGANIZE_IMPORTS_RUFF = (
+    f"notebook.{CodeActionKind.SourceOrganizeImports.value}.ruff"
+)
+
 
 ###
 # Document
@@ -804,11 +820,19 @@ class LegacyFix(TypedDict):
     TEXT_DOCUMENT_CODE_ACTION,
     CodeActionOptions(
         code_action_kinds=[
+            # Standard code action kinds.
             CodeActionKind.QuickFix,
             CodeActionKind.SourceFixAll,
             CodeActionKind.SourceOrganizeImports,
-            f"{CodeActionKind.SourceFixAll.value}.ruff",
-            f"{CodeActionKind.SourceOrganizeImports.value}.ruff",
+            # Standard code action kinds, scoped to Ruff.
+            SOURCE_FIX_ALL_RUFF,
+            SOURCE_ORGANIZE_IMPORTS_RUFF,
+            # Notebook code action kinds.
+            NOTEBOOK_SOURCE_FIX_ALL,
+            NOTEBOOK_SOURCE_ORGANIZE_IMPORTS,
+            # Notebook code action kinds, scoped to Ruff.
+            NOTEBOOK_SOURCE_FIX_ALL_RUFF,
+            NOTEBOOK_SOURCE_ORGANIZE_IMPORTS_RUFF,
         ],
         resolve_provider=True,
     ),
@@ -821,6 +845,21 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     first, and if there's no cell with the given URI, it will fallback to the text
     document.
     """
+
+    def document_from_kind(uri: str, kind: str) -> Document:
+        if kind in (
+            # For `notebook`-scoped actions, use the Notebook Document instead of
+            # the cell, despite being passed the URI of the first cell.
+            # See: https://github.com/microsoft/vscode/issues/193120
+            NOTEBOOK_SOURCE_FIX_ALL,
+            NOTEBOOK_SOURCE_ORGANIZE_IMPORTS,
+            NOTEBOOK_SOURCE_FIX_ALL_RUFF,
+            NOTEBOOK_SOURCE_ORGANIZE_IMPORTS_RUFF,
+        ):
+            return Document.from_uri(uri)
+        else:
+            return Document.from_cell_or_text_uri(uri)
+
     document_path = _uri_to_fs_path(params.text_document.uri)
     if utils.is_stdlib_file(document_path):
         # Don't format standard library files.
@@ -828,11 +867,14 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
         return None
 
     settings = _get_settings_by_document(document_path)
+
     if settings["organizeImports"]:
         # Generate the "Ruff: Organize Imports" edit
         for kind in (
             CodeActionKind.SourceOrganizeImports,
-            f"{CodeActionKind.SourceOrganizeImports.value}.ruff",
+            SOURCE_ORGANIZE_IMPORTS_RUFF,
+            NOTEBOOK_SOURCE_ORGANIZE_IMPORTS,
+            NOTEBOOK_SOURCE_ORGANIZE_IMPORTS_RUFF,
         ):
             if (
                 params.context.only
@@ -840,7 +882,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 and kind in params.context.only
             ):
                 workspace_edit = await _fix_document_impl(
-                    Document.from_cell_or_text_uri(params.text_document.uri),
+                    document_from_kind(params.text_document.uri, kind),
                     only=["I001", "I002"],
                 )
                 if workspace_edit:
@@ -860,7 +902,9 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
         # Generate the "Ruff: Fix All" edit.
         for kind in (
             CodeActionKind.SourceFixAll,
-            f"{CodeActionKind.SourceFixAll.value}.ruff",
+            SOURCE_FIX_ALL_RUFF,
+            NOTEBOOK_SOURCE_FIX_ALL,
+            NOTEBOOK_SOURCE_FIX_ALL_RUFF,
         ):
             if (
                 params.context.only
@@ -868,7 +912,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 and kind in params.context.only
             ):
                 workspace_edit = await _fix_document_impl(
-                    Document.from_cell_or_text_uri(params.text_document.uri)
+                    document_from_kind(params.text_document.uri, kind)
                 )
                 if workspace_edit:
                     return [
@@ -1063,17 +1107,14 @@ async def resolve_code_action(params: CodeAction) -> CodeAction:
 
     settings = _get_settings_by_document(document.path)
 
-    if settings["organizeImports"] and params.kind in (
-        CodeActionKind.SourceOrganizeImports,
-        f"{CodeActionKind.SourceOrganizeImports.value}.ruff",
+    if (
+        settings["organizeImports"]
+        and params.kind == CodeActionKind.SourceOrganizeImports
     ):
         # Generate the "Ruff: Organize Imports" edit
         params.edit = await _fix_document_impl(document, only=["I001", "I002"])
 
-    elif settings["fixAll"] and params.kind in (
-        CodeActionKind.SourceFixAll,
-        f"{CodeActionKind.SourceFixAll.value}.ruff",
-    ):
+    elif settings["fixAll"] and params.kind == CodeActionKind.SourceFixAll:
         # Generate the "Ruff: Fix All" edit.
         params.edit = await _fix_document_impl(document)
 
@@ -1125,7 +1166,8 @@ async def apply_format(arguments: tuple[TextDocument]):
 async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | None:
     # For a Jupyter Notebook, this request can only format a single cell as the
     # request itself can only act on a text document. A cell in a Notebook is
-    # represented as a text document.
+    # represented as a text document. The "Notebook: Format notebook" action calls
+    # this request for every cell.
     document = Document.from_cell_or_text_uri(params.text_document.uri)
 
     result = await _run_format_on_document(document)
