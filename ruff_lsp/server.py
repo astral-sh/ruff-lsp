@@ -79,6 +79,7 @@ from ruff_lsp.settings import (
     UserSettings,
     WorkspaceSettings,
     lint_args,
+    lint_enable,
     lint_run,
 )
 from ruff_lsp.utils import RunResult
@@ -440,7 +441,11 @@ async def did_open(params: DidOpenTextDocumentParams) -> None:
     document = Document.from_text_document(
         LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     )
-    diagnostics = await _lint_document_impl(document)
+    settings = _get_settings_by_document(document.path)
+    if not lint_enable(settings):
+        return
+
+    diagnostics = await _lint_document_impl(document, settings)
     LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
 
@@ -456,12 +461,16 @@ def did_close(params: DidCloseTextDocumentParams) -> None:
 async def did_save(params: DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
     text_document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
-    if lint_run(_get_settings_by_document(text_document.path)) in (
+    settings = _get_settings_by_document(text_document.path)
+    if not lint_enable(settings):
+        return
+
+    if lint_run(settings) in (
         Run.OnType,
         Run.OnSave,
     ):
         document = Document.from_text_document(text_document)
-        diagnostics = await _lint_document_impl(document)
+        diagnostics = await _lint_document_impl(document, settings)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
 
@@ -469,9 +478,13 @@ async def did_save(params: DidSaveTextDocumentParams) -> None:
 async def did_change(params: DidChangeTextDocumentParams) -> None:
     """LSP handler for textDocument/didChange request."""
     text_document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
-    if lint_run(_get_settings_by_document(text_document.path)) == Run.OnType:
+    settings = _get_settings_by_document(text_document.path)
+    if not lint_enable(settings):
+        return
+
+    if lint_run(settings) == Run.OnType:
         document = Document.from_text_document(text_document)
-        diagnostics = await _lint_document_impl(document)
+        diagnostics = await _lint_document_impl(document, settings)
         LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
 
 
@@ -486,7 +499,11 @@ async def did_open_notebook(params: DidOpenNotebookDocumentParams) -> None:
         return
 
     document = Document.from_notebook_document(notebook_document)
-    diagnostics = await _lint_document_impl(document)
+    settings = _get_settings_by_document(document.path)
+    if not lint_enable(settings):
+        return
+
+    diagnostics = await _lint_document_impl(document, settings)
 
     # Publish diagnostics for each cell.
     for cell_idx, diagnostics in _group_diagnostics_by_cell(diagnostics).items():
@@ -551,27 +568,34 @@ async def _did_change_or_save_notebook(
         return
 
     document = Document.from_notebook_document(notebook_document)
-    if lint_run(_get_settings_by_document(document.path)) not in run_types:
+    settings = _get_settings_by_document(document.path)
+    if not lint_enable(settings):
         return
 
-    cell_diagnostics = _group_diagnostics_by_cell(await _lint_document_impl(document))
-
-    # Publish diagnostics for every code cell, replacing the previous diagnostics.
-    # This is required here because a cell containing diagnostics in the first run
-    # might not contain any diagnostics in the second run. In that case, we need to
-    # clear the diagnostics for that cell which is done by publishing empty diagnostics.
-    for cell_idx, cell in enumerate(notebook_document.cells):
-        if cell.kind is not NotebookCellKind.Code:
-            continue
-        LSP_SERVER.publish_diagnostics(
-            cell.document,
-            # The cell indices are 1-based in Ruff.
-            cell_diagnostics.get(cell_idx + 1, []),
+    if lint_run(settings) in run_types:
+        cell_diagnostics = _group_diagnostics_by_cell(
+            await _lint_document_impl(document, settings)
         )
 
+        # Publish diagnostics for every code cell, replacing the previous diagnostics.
+        # This is required here because a cell containing diagnostics in the first run
+        # might not contain any diagnostics in the second run. In that case, we need to
+        # clear the diagnostics for that cell which is done by publishing empty
+        # diagnostics.
+        for cell_idx, cell in enumerate(notebook_document.cells):
+            if cell.kind is not NotebookCellKind.Code:
+                continue
+            LSP_SERVER.publish_diagnostics(
+                cell.document,
+                # The cell indices are 1-based in Ruff.
+                cell_diagnostics.get(cell_idx + 1, []),
+            )
 
-async def _lint_document_impl(document: Document) -> list[Diagnostic]:
-    result = await _run_check_on_document(document)
+
+async def _lint_document_impl(
+    document: Document, settings: WorkspaceSettings
+) -> list[Diagnostic]:
+    result = await _run_check_on_document(document, settings)
     if result is None:
         return []
 
@@ -867,6 +891,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
         return None
 
     settings = _get_settings_by_document(document_path)
+    log_to_output(f"Lint enabled: {lint_enable(settings)}")
 
     if settings["organizeImports"]:
         # Generate the "Ruff: Organize Imports" edit
@@ -883,6 +908,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
             ):
                 workspace_edit = await _fix_document_impl(
                     document_from_kind(params.text_document.uri, kind),
+                    settings,
                     only=["I001", "I002"],
                 )
                 if workspace_edit:
@@ -898,8 +924,8 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 else:
                     return []
 
-    if settings["fixAll"]:
-        # Generate the "Ruff: Fix All" edit.
+    if settings["fixAll"] and lint_enable(settings):
+        # If the linter is enabled, generate the "Ruff: Fix All" edit.
         for kind in (
             CodeActionKind.SourceFixAll,
             SOURCE_FIX_ALL_RUFF,
@@ -912,7 +938,8 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 and kind in params.context.only
             ):
                 workspace_edit = await _fix_document_impl(
-                    document_from_kind(params.text_document.uri, kind)
+                    document_from_kind(params.text_document.uri, kind),
+                    settings,
                 )
                 if workspace_edit:
                     return [
@@ -935,8 +962,10 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
 
     actions: list[CodeAction] = []
 
-    # Add "Ruff: Autofix" for every fixable diagnostic.
-    if settings.get("codeAction", {}).get("fixViolation", {}).get("enable", True):
+    # If the linter is enabled, add "Ruff: Autofix" for every fixable diagnostic.
+    if settings.get("codeAction", {}).get("fixViolation", {}).get(
+        "enable", True
+    ) and lint_enable(settings):
         if not params.context.only or CodeActionKind.QuickFix in params.context.only:
             # This is a text document representing either a Python file or a
             # Notebook cell.
@@ -967,8 +996,10 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                             ),
                         )
 
-    # Add "Disable for this line" for every diagnostic.
-    if settings.get("codeAction", {}).get("disableRuleComment", {}).get("enable", True):
+    # If the linter is enabled, add "Disable for this line" for every diagnostic.
+    if settings.get("codeAction", {}).get("disableRuleComment", {}).get(
+        "enable", True
+    ) and lint_enable(settings):
         if not params.context.only or CodeActionKind.QuickFix in params.context.only:
             # This is a text document representing either a Python file or a
             # Notebook cell.
@@ -1047,6 +1078,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
             else:
                 workspace_edit = await _fix_document_impl(
                     Document.from_cell_or_text_uri(params.text_document.uri),
+                    settings,
                     only=["I001", "I002"],
                 )
                 if workspace_edit:
@@ -1060,8 +1092,8 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                         ),
                     )
 
-    if settings["fixAll"]:
-        # Add "Ruff: Fix All" as a supported action.
+    if settings["fixAll"] and lint_enable(settings):
+        # If the linter is enabled, add "Ruff: Fix All" as a supported action.
         if not params.context.only or (
             CodeActionKind.SourceFixAll in params.context.only
         ):
@@ -1077,7 +1109,8 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 )
             else:
                 workspace_edit = await _fix_document_impl(
-                    Document.from_cell_or_text_uri(params.text_document.uri)
+                    Document.from_cell_or_text_uri(params.text_document.uri),
+                    settings,
                 )
                 if workspace_edit:
                     actions.append(
@@ -1111,12 +1144,18 @@ async def resolve_code_action(params: CodeAction) -> CodeAction:
         settings["organizeImports"]
         and params.kind == CodeActionKind.SourceOrganizeImports
     ):
-        # Generate the "Ruff: Organize Imports" edit
-        params.edit = await _fix_document_impl(document, only=["I001", "I002"])
+        # Generate the "Organize Imports" edit
+        params.edit = await _fix_document_impl(
+            document, settings, only=["I001", "I002"]
+        )
 
-    elif settings["fixAll"] and params.kind == CodeActionKind.SourceFixAll:
-        # Generate the "Ruff: Fix All" edit.
-        params.edit = await _fix_document_impl(document)
+    elif (
+        settings["fixAll"]
+        and lint_enable(settings)
+        and params.kind == CodeActionKind.SourceFixAll
+    ):
+        # Generate the "Fix All" edit.
+        params.edit = await _fix_document_impl(document, settings)
 
     return params
 
@@ -1125,7 +1164,11 @@ async def resolve_code_action(params: CodeAction) -> CodeAction:
 async def apply_autofix(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     document = Document.from_uri(uri)
-    workspace_edit = await _fix_document_impl(document)
+    settings = _get_settings_by_document(document.path)
+    if not lint_enable(settings):
+        return
+
+    workspace_edit = await _fix_document_impl(document, settings)
     if workspace_edit is None:
         return
     LSP_SERVER.apply_edit(workspace_edit, "Ruff: Fix all auto-fixable problems")
@@ -1135,7 +1178,8 @@ async def apply_autofix(arguments: tuple[TextDocument]):
 async def apply_organize_imports(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     document = Document.from_uri(uri)
-    workspace_edit = await _fix_document_impl(document, only=["I001", "I002"])
+    settings = _get_settings_by_document(document.path)
+    workspace_edit = await _fix_document_impl(document, settings, only=["I001", "I002"])
     if workspace_edit is None:
         return
     LSP_SERVER.apply_edit(workspace_edit, "Ruff: Format imports")
@@ -1196,11 +1240,13 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
 
 async def _fix_document_impl(
     document: Document,
+    settings: WorkspaceSettings,
     *,
     only: Sequence[str] | None = None,
 ) -> WorkspaceEdit | None:
     result = await _run_check_on_document(
         document,
+        settings,
         extra_args=["--fix"],
         only=only,
     )
@@ -1707,6 +1753,7 @@ def _executable_version(executable: str) -> Version:
 
 async def _run_check_on_document(
     document: Document,
+    settings: WorkspaceSettings,
     *,
     extra_args: Sequence[str] = [],
     only: Sequence[str] | None = None,
@@ -1715,8 +1762,6 @@ async def _run_check_on_document(
     if document.is_stdlib_file():
         log_warning(f"Skipping standard library file: {document.path}")
         return None
-
-    settings = _get_settings_by_document(document.path)
 
     executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_LINTER)
     argv: list[str] = CHECK_ARGS + list(extra_args)

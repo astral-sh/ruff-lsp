@@ -80,6 +80,9 @@ class CodeAction(TypedDict, total=False):
 
 
 class Lint(TypedDict, total=False):
+    enable: bool
+    """Whether to enable linting."""
+
     args: list[str]
     """Additional command-line arguments to pass to `ruff check`."""
 
@@ -110,3 +113,11 @@ def lint_run(settings: UserSettings) -> Run:
         return Run(settings["run"])
     else:
         return Run.OnType
+
+
+def lint_enable(settings: UserSettings) -> bool:
+    """Get the `lint.enable` setting from the user settings."""
+    if "lint" in settings and "enable" in settings["lint"]:
+        return settings["lint"]["enable"]
+    else:
+        return True
