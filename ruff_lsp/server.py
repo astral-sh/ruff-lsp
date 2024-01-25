@@ -1190,8 +1190,9 @@ async def apply_organize_imports(arguments: tuple[TextDocument]):
 async def apply_format(arguments: tuple[TextDocument]):
     uri = arguments[0]["uri"]
     document = Document.from_uri(uri)
+    settings = _get_settings_by_document(document.path)
 
-    result = await _run_format_on_document(document)
+    result = await _run_format_on_document(document, settings)
     if result is None:
         return None
 
@@ -1214,8 +1215,9 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
     # represented as a text document. The "Notebook: Format notebook" action calls
     # this request for every cell.
     document = Document.from_cell_or_text_uri(params.text_document.uri)
+    settings = _get_settings_by_document(document.path)
 
-    result = await _run_format_on_document(document)
+    result = await _run_format_on_document(document, settings)
     if result is None:
         return None
 
@@ -1820,10 +1822,10 @@ async def _run_check_on_document(
     )
 
 
-async def _run_format_on_document(document: Document) -> ExecutableResult | None:
+async def _run_format_on_document(
+    document: Document, settings: WorkspaceSettings
+) -> ExecutableResult | None:
     """Runs the Ruff `format` subcommand on the given document source."""
-    settings = _get_settings_by_document(document.path)
-
     if settings.get("ignoreStandardLibrary", True) and document.is_stdlib_file():
         log_warning(f"Skipping standard library file: {document.path}")
         return None
