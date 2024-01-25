@@ -1558,10 +1558,11 @@ def _get_global_defaults() -> UserSettings:
     settings: UserSettings = {
         "codeAction": GLOBAL_SETTINGS.get("codeAction", {}),
         "fixAll": GLOBAL_SETTINGS.get("fixAll", True),
+        "format": GLOBAL_SETTINGS.get("format", {}),
+        "ignoreStandardLibrary": GLOBAL_SETTINGS.get("ignoreStandardLibrary", True),
         "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "fromEnvironment"),
         "interpreter": GLOBAL_SETTINGS.get("interpreter", [sys.executable]),
         "lint": GLOBAL_SETTINGS.get("lint", {}),
-        "format": GLOBAL_SETTINGS.get("format", {}),
         "logLevel": GLOBAL_SETTINGS.get("logLevel", "error"),
         "organizeImports": GLOBAL_SETTINGS.get("organizeImports", True),
         "path": GLOBAL_SETTINGS.get("path", []),
