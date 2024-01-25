@@ -10,6 +10,7 @@ from ruff_lsp.server import (
     VERSION_REQUIREMENT_FORMATTER,
     Document,
     _fixed_source_to_edits,
+    _get_settings_by_document,
     _run_format_on_document,
 )
 from tests.client import utils
@@ -30,6 +31,7 @@ async def test_format(tmp_path, ruff_version: Version):
 
     workspace = Workspace(str(tmp_path))
     document = Document.from_text_document(workspace.get_text_document(uri))
+    settings = _get_settings_by_document(document.path)
 
     handle_unsupported = (
         pytest.raises(RuntimeError, match=f"Ruff .* required, but found {ruff_version}")
@@ -38,7 +40,7 @@ async def test_format(tmp_path, ruff_version: Version):
     )
 
     with handle_unsupported:
-        result = await _run_format_on_document(document)
+        result = await _run_format_on_document(document, settings)
         assert result is not None
         assert result.exit_code == 0
         [edit] = _fixed_source_to_edits(
@@ -59,6 +61,7 @@ foo =
 
     workspace = Workspace(str(tmp_path))
     document = Document.from_text_document(workspace.get_text_document(uri))
+    settings = _get_settings_by_document(document.path)
 
     handle_unsupported = (
         pytest.raises(RuntimeError, match=f"Ruff .* required, but found {ruff_version}")
@@ -67,6 +70,6 @@ foo =
     )
 
     with handle_unsupported:
-        result = await _run_format_on_document(document)
+        result = await _run_format_on_document(document, settings)
         assert result is not None
         assert result.exit_code == 2
