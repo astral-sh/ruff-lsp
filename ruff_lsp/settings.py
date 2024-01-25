@@ -47,7 +47,7 @@ class UserSettings(TypedDict, total=False):
     """Settings specific to format capabilities."""
 
     ignoreStandardLibrary: bool
-    """Whether to ignore files in the standard library when running Ruff."""
+    """Whether to ignore files that are inferred to be part of the standard library."""
 
     # Deprecated: use `lint.args` instead.
     args: list[str]
