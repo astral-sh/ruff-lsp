@@ -891,7 +891,6 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
         return None
 
     settings = _get_settings_by_document(document_path)
-    log_to_output(f"Lint enabled: {lint_enable(settings)}")
 
     if settings["organizeImports"]:
         # Generate the "Ruff: Organize Imports" edit
@@ -924,8 +923,8 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                 else:
                     return []
 
-    if settings["fixAll"] and lint_enable(settings):
-        # If the linter is enabled, generate the "Ruff: Fix All" edit.
+    # If the linter is enabled, generate the "Ruff: Fix All" edit.
+    if lint_enable(settings) and settings["fixAll"]:
         for kind in (
             CodeActionKind.SourceFixAll,
             SOURCE_FIX_ALL_RUFF,
@@ -963,9 +962,9 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
     actions: list[CodeAction] = []
 
     # If the linter is enabled, add "Ruff: Autofix" for every fixable diagnostic.
-    if settings.get("codeAction", {}).get("fixViolation", {}).get(
-        "enable", True
-    ) and lint_enable(settings):
+    if lint_enable(settings) and settings.get("codeAction", {}).get(
+        "fixViolation", {}
+    ).get("enable", True):
         if not params.context.only or CodeActionKind.QuickFix in params.context.only:
             # This is a text document representing either a Python file or a
             # Notebook cell.
@@ -997,9 +996,9 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                         )
 
     # If the linter is enabled, add "Disable for this line" for every diagnostic.
-    if settings.get("codeAction", {}).get("disableRuleComment", {}).get(
-        "enable", True
-    ) and lint_enable(settings):
+    if lint_enable(settings) and settings.get("codeAction", {}).get(
+        "disableRuleComment", {}
+    ).get("enable", True):
         if not params.context.only or CodeActionKind.QuickFix in params.context.only:
             # This is a text document representing either a Python file or a
             # Notebook cell.
@@ -1092,8 +1091,8 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
                         ),
                     )
 
-    if settings["fixAll"] and lint_enable(settings):
-        # If the linter is enabled, add "Ruff: Fix All" as a supported action.
+    # If the linter is enabled, add "Ruff: Fix All" as a supported action.
+    if lint_enable(settings) and settings["fixAll"]:
         if not params.context.only or (
             CodeActionKind.SourceFixAll in params.context.only
         ):
@@ -1150,8 +1149,8 @@ async def resolve_code_action(params: CodeAction) -> CodeAction:
         )
 
     elif (
-        settings["fixAll"]
-        and lint_enable(settings)
+        lint_enable(settings)
+        and settings["fixAll"]
         and params.kind == CodeActionKind.SourceFixAll
     ):
         # Generate the "Fix All" edit.
