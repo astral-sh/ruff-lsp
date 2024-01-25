@@ -9,8 +9,8 @@ install:
   pip install --no-deps -r requirements-dev.txt
 
 fmt:
-  ruff check --fix ./ruff_lsp ./tests
   ruff format ./ruff_lsp ./tests
+  ruff check --fix ./ruff_lsp ./tests
 
 check:
   ruff check ./ruff_lsp ./tests
