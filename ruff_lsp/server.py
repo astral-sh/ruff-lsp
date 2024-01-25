@@ -885,12 +885,14 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
             return Document.from_cell_or_text_uri(uri)
 
     document_path = _uri_to_fs_path(params.text_document.uri)
-    if utils.is_stdlib_file(document_path):
+    settings = _get_settings_by_document(document_path)
+
+    if settings.get("ignoreStandardLibrary", True) and utils.is_stdlib_file(
+        document_path
+    ):
         # Don't format standard library files.
         # Publishing empty list clears the entry.
         return None
-
-    settings = _get_settings_by_document(document_path)
 
     if settings["organizeImports"]:
         # Generate the "Ruff: Organize Imports" edit
@@ -1758,7 +1760,7 @@ async def _run_check_on_document(
     only: Sequence[str] | None = None,
 ) -> ExecutableResult | None:
     """Runs the Ruff `check` subcommand  on the given document source."""
-    if document.is_stdlib_file():
+    if settings.get("ignoreStandardLibrary", True) and document.is_stdlib_file():
         log_warning(f"Skipping standard library file: {document.path}")
         return None
 
@@ -1820,11 +1822,12 @@ async def _run_check_on_document(
 
 async def _run_format_on_document(document: Document) -> ExecutableResult | None:
     """Runs the Ruff `format` subcommand on the given document source."""
-    if document.is_stdlib_file():
+    settings = _get_settings_by_document(document.path)
+
+    if settings.get("ignoreStandardLibrary", True) and document.is_stdlib_file():
         log_warning(f"Skipping standard library file: {document.path}")
         return None
 
-    settings = _get_settings_by_document(document.path)
     executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_FORMATTER)
     argv: list[str] = [
         "format",
