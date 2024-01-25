@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import os
 import os.path
+import pathlib
 import site
 import subprocess
 import sys
+import sysconfig
 from typing import Any, NamedTuple
 
 from packaging.version import Version
@@ -19,19 +21,48 @@ def as_list(content: Any | list[Any] | tuple[Any, ...]) -> list[Any]:
     return [content]
 
 
-_site_paths = tuple(
-    [
-        os.path.normcase(os.path.normpath(p))
-        for p in (as_list(site.getsitepackages()) + as_list(site.getusersitepackages()))
+def _get_sys_config_paths() -> list[str]:
+    """Returns paths from sysconfig.get_paths()."""
+    return [
+        path
+        for group, path in sysconfig.get_paths().items()
+        if group not in ["data", "platdata", "scripts"]
     ]
+
+
+def _get_extensions_dir() -> list[str]:
+    """This is the extensions folder under ~/.vscode or ~/.vscode-server."""
+
+    # The path here is calculated relative to the tool
+    # this is because users can launch VS Code with custom
+    # extensions folder using the --extensions-dir argument
+    path = pathlib.Path(__file__).parent.parent.parent.parent
+    #                              ^     bundled  ^  extensions
+    #                            tool        <extension>
+    if path.name == "extensions":
+        return [os.fspath(path)]
+    return []
+
+
+_stdlib_paths = set(
+    str(pathlib.Path(p).resolve())
+    for p in (
+        as_list(site.getsitepackages())
+        + as_list(site.getusersitepackages())
+        + _get_sys_config_paths()
+        + _get_extensions_dir()
+    )
 )
 
 
 def is_same_path(file_path1: str, file_path2: str) -> bool:
     """Returns true if two paths are the same."""
-    return os.path.normcase(os.path.normpath(file_path1)) == os.path.normcase(
-        os.path.normpath(file_path2)
-    )
+    return pathlib.Path(file_path1) == pathlib.Path(file_path2)
+
+
+def normalize_path(file_path: str) -> str:
+    """Returns normalized path."""
+    return str(pathlib.Path(file_path).resolve())
 
 
 def is_current_interpreter(executable: str) -> bool:
@@ -40,8 +71,9 @@ def is_current_interpreter(executable: str) -> bool:
 
 
 def is_stdlib_file(file_path: str) -> bool:
-    """Return True if the file belongs to standard library."""
-    return os.path.normcase(os.path.normpath(file_path)).startswith(_site_paths)
+    """Return True if the file belongs to the standard library."""
+    normalized_path = str(pathlib.Path(file_path).resolve())
+    return any(normalized_path.startswith(path) for path in _stdlib_paths)
 
 
 def scripts(interpreter: str) -> str:
