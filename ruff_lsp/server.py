@@ -30,6 +30,7 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DID_SAVE,
     TEXT_DOCUMENT_FORMATTING,
     TEXT_DOCUMENT_HOVER,
+    TEXT_DOCUMENT_RANGE_FORMATTING,
     AnnotatedTextEdit,
     ClientCapabilities,
     CodeAction,
@@ -49,6 +50,8 @@ from lsprotocol.types import (
     DidSaveNotebookDocumentParams,
     DidSaveTextDocumentParams,
     DocumentFormattingParams,
+    DocumentRangeFormattingParams,
+    DocumentRangeFormattingRegistrationOptions,
     Hover,
     HoverParams,
     InitializeParams,
@@ -63,13 +66,16 @@ from lsprotocol.types import (
     NotebookDocumentSyncOptionsNotebookSelectorType2CellsType,
     OptionalVersionedTextDocumentIdentifier,
     Position,
+    PositionEncodingKind,
     Range,
     TextDocumentEdit,
+    TextDocumentFilter_Type1,
     TextEdit,
     WorkspaceEdit,
 )
 from packaging.specifiers import SpecifierSet, Version
 from pygls import server, uris, workspace
+from pygls.workspace.position_codec import PositionCodec
 from typing_extensions import Literal, Self, TypedDict, assert_never
 
 from ruff_lsp import __version__, utils
@@ -140,6 +146,7 @@ TOOL_DISPLAY = "Ruff"
 # Require at least Ruff v0.0.291 for formatting, but allow older versions for linting.
 VERSION_REQUIREMENT_FORMATTER = SpecifierSet(">=0.0.291")
 VERSION_REQUIREMENT_LINTER = SpecifierSet(">=0.0.189")
+VERSION_REQUIREMENT_RANGE_FORMATTING = SpecifierSet(">=0.2.1")
 # Version requirement for use of the `--output-format` option
 VERSION_REQUIREMENT_OUTPUT_FORMAT = SpecifierSet(">=0.0.291")
 # Version requirement after which Ruff avoids writing empty output for excluded files.
@@ -1208,7 +1215,9 @@ async def apply_format(arguments: tuple[TextDocument]):
 
 
 @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
-async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | None:
+async def format_document(
+    params: DocumentFormattingParams, range: Range | None = None
+) -> list[TextEdit] | None:
     # For a Jupyter Notebook, this request can only format a single cell as the
     # request itself can only act on a text document. A cell in a Notebook is
     # represented as a text document. The "Notebook: Format notebook" action calls
@@ -1216,7 +1225,11 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
     document = Document.from_cell_or_text_uri(params.text_document.uri)
     settings = _get_settings_by_document(document.path)
 
-    result = await _run_format_on_document(document, settings)
+    # We don't support range formatting of notebooks yet but VS Code
+    # doesn't seem to respect the document filter. For now, format the entire cell.
+    range = None if document.kind is DocumentKind.Cell else range
+
+    result = await _run_format_on_document(document, settings, range)
     if result is None:
         return None
 
@@ -1238,6 +1251,28 @@ async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | 
         return _fixed_source_to_edits(
             original_source=document.source, fixed_source=result.stdout.decode("utf-8")
         )
+
+
+@LSP_SERVER.feature(
+    TEXT_DOCUMENT_RANGE_FORMATTING,
+    DocumentRangeFormattingRegistrationOptions(
+        document_selector=[
+            TextDocumentFilter_Type1(language="python", scheme="file"),
+            TextDocumentFilter_Type1(language="python", scheme="untitled"),
+        ],
+        ranges_support=False,
+        work_done_progress=False,
+    ),
+)
+async def format_document_range(
+    params: DocumentRangeFormattingParams,
+) -> list[TextEdit] | None:
+    return await format_document(
+        DocumentFormattingParams(
+            params.text_document, params.options, params.work_done_token
+        ),
+        params.range,
+    )
 
 
 async def _fix_document_impl(
@@ -1856,14 +1891,19 @@ async def _run_check_on_document(
 
 
 async def _run_format_on_document(
-    document: Document, settings: WorkspaceSettings
+    document: Document, settings: WorkspaceSettings, format_range: Range | None = None
 ) -> ExecutableResult | None:
     """Runs the Ruff `format` subcommand on the given document source."""
     if settings.get("ignoreStandardLibrary", True) and document.is_stdlib_file():
         log_warning(f"Skipping standard library file: {document.path}")
         return None
 
-    executable = _find_ruff_binary(settings, VERSION_REQUIREMENT_FORMATTER)
+    version_requirement = (
+        VERSION_REQUIREMENT_FORMATTER
+        if format_range is None
+        else VERSION_REQUIREMENT_RANGE_FORMATTING
+    )
+    executable = _find_ruff_binary(settings, version_requirement)
     argv: list[str] = [
         "format",
         "--force-exclude",
@@ -1871,6 +1911,25 @@ async def _run_format_on_document(
         "--stdin-filename",
         document.path,
     ]
+
+    if format_range:
+        # Convert the start and end to character offsets instead of line:column
+        lines = document.source.splitlines(True)
+        codec = PositionCodec(PositionEncodingKind.Utf16)
+        range = codec.range_from_client_units(lines, format_range)
+        start = format_range.start.character
+        end = format_range.end.character
+
+        for index, line in enumerate(lines):
+            if index < range.start.line:
+                start += len(line)
+
+            if index < range.end.line:
+                end += len(line)
+            else:
+                break
+
+        argv.extend(["--range-start", str(start), "--range-end", str(end)])
 
     for arg in settings.get("format", {}).get("args", []):
         if arg in UNSUPPORTED_FORMAT_ARGS:
