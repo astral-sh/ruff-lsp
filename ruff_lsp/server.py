@@ -1375,6 +1375,7 @@ def _fixed_source_to_edits(
         fixed_source = "".join(fixed_source)
 
     new_source = _match_line_endings(original_source, fixed_source)
+
     if new_source == original_source:
         return []
 
