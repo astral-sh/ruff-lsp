@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, List, NamedTuple, Sequence, Union, cast
 
-from lsprotocol import validators
 from lsprotocol.types import (
     CODE_ACTION_RESOLVE,
     INITIALIZE,
@@ -1379,13 +1378,45 @@ def _fixed_source_to_edits(
     if new_source == original_source:
         return []
 
+    # Reduce the text edit by omitting the common suffix and postfix (lines)
+    # from the text edit. I chose this basic diffing because "proper" diffing has
+    # the downside that it can be very slow in some cases. Black uses a diffing approach
+    # that takes time into consideration, but it requires spawning a thread to stop
+    # the diffing after a given time, which feels very heavy weight.
+    # This basic "diffing" has a guaranteed `O(n)` runtime and is sufficient to
+    # prevent transmitting the entire source document when formatting a range
+    # or formatting a document where most of the code remains unchanged.
+    #
+    # https://github.com/microsoft/vscode-black-formatter/blob/main/bundled/tool/lsp_edit_utils.py
+    new_lines = new_source.splitlines(True)
+    original_lines = original_source.splitlines(True)
+
+    start_offset = 0
+    end_offset = 0
+
+    for new_line, original_line in zip(new_lines, original_lines):
+        if new_line == original_line:
+            start_offset += 1
+        else:
+            break
+
+    for new_line, original_line in zip(
+        reversed(new_lines[start_offset:]), reversed(original_lines[start_offset:])
+    ):
+        if new_line == original_line:
+            end_offset += 1
+        else:
+            break
+
+    trimmed_new_source = "".join(new_lines[start_offset : len(new_lines) - end_offset])
+
     return [
         TextEdit(
             range=Range(
-                start=Position(line=0, character=0),
-                end=Position(line=validators.UINTEGER_MAX_VALUE, character=0),
+                start=Position(line=start_offset, character=0),
+                end=Position(line=len(original_lines) - end_offset, character=0),
             ),
-            new_text=new_source,
+            new_text=trimmed_new_source,
         )
     ]
 
