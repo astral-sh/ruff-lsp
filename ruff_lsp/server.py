@@ -139,12 +139,12 @@ TOOL_MODULE = "ruff.exe" if sys.platform == "win32" else "ruff"
 TOOL_DISPLAY = "Ruff"
 
 # Require at least Ruff v0.0.291 for formatting, but allow older versions for linting.
-VERSION_REQUIREMENT_FORMATTER = SpecifierSet(">=0.0.291,<0.2.0")
-VERSION_REQUIREMENT_LINTER = SpecifierSet(">=0.0.189,<0.2.0")
+VERSION_REQUIREMENT_FORMATTER = SpecifierSet(">=0.0.291")
+VERSION_REQUIREMENT_LINTER = SpecifierSet(">=0.0.189")
 # Version requirement for use of the `--output-format` option
-VERSION_REQUIREMENT_OUTPUT_FORMAT = SpecifierSet(">=0.0.291,<0.2.0")
+VERSION_REQUIREMENT_OUTPUT_FORMAT = SpecifierSet(">=0.0.291")
 # Version requirement after which Ruff avoids writing empty output for excluded files.
-VERSION_REQUIREMENT_EMPTY_OUTPUT = SpecifierSet(">=0.1.6,<0.2.0")
+VERSION_REQUIREMENT_EMPTY_OUTPUT = SpecifierSet(">=0.1.6")
 
 # Arguments provided to every Ruff invocation.
 CHECK_ARGS = [
