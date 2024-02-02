@@ -1215,14 +1215,41 @@ async def apply_format(arguments: tuple[TextDocument]):
 
 
 @LSP_SERVER.feature(TEXT_DOCUMENT_FORMATTING)
-async def format_document(
-    params: DocumentFormattingParams, range: Range | None = None
+async def format_document(params: DocumentFormattingParams) -> list[TextEdit] | None:
+    return await _format_document_impl(params, None)
+
+
+@LSP_SERVER.feature(
+    TEXT_DOCUMENT_RANGE_FORMATTING,
+    DocumentRangeFormattingRegistrationOptions(
+        document_selector=[
+            TextDocumentFilter_Type1(language="python", scheme="file"),
+            TextDocumentFilter_Type1(language="python", scheme="untitled"),
+        ],
+        ranges_support=False,
+        work_done_progress=False,
+    ),
+)
+async def format_document_range(
+    params: DocumentRangeFormattingParams,
+) -> list[TextEdit] | None:
+    return await _format_document_impl(
+        DocumentFormattingParams(
+            params.text_document, params.options, params.work_done_token
+        ),
+        params.range,
+    )
+
+
+async def _format_document_impl(
+    params: DocumentFormattingParams, range: Range | None
 ) -> list[TextEdit] | None:
     # For a Jupyter Notebook, this request can only format a single cell as the
     # request itself can only act on a text document. A cell in a Notebook is
     # represented as a text document. The "Notebook: Format notebook" action calls
     # this request for every cell.
     document = Document.from_cell_or_text_uri(params.text_document.uri)
+
     settings = _get_settings_by_document(document.path)
 
     # We don't support range formatting of notebooks yet but VS Code
@@ -1251,28 +1278,6 @@ async def format_document(
         return _fixed_source_to_edits(
             original_source=document.source, fixed_source=result.stdout.decode("utf-8")
         )
-
-
-@LSP_SERVER.feature(
-    TEXT_DOCUMENT_RANGE_FORMATTING,
-    DocumentRangeFormattingRegistrationOptions(
-        document_selector=[
-            TextDocumentFilter_Type1(language="python", scheme="file"),
-            TextDocumentFilter_Type1(language="python", scheme="untitled"),
-        ],
-        ranges_support=False,
-        work_done_progress=False,
-    ),
-)
-async def format_document_range(
-    params: DocumentRangeFormattingParams,
-) -> list[TextEdit] | None:
-    return await format_document(
-        DocumentFormattingParams(
-            params.text_document, params.options, params.work_done_token
-        ),
-        params.range,
-    )
 
 
 async def _fix_document_impl(
@@ -1913,23 +1918,17 @@ async def _run_format_on_document(
     ]
 
     if format_range:
-        # Convert the start and end to character offsets instead of line:column
-        lines = document.source.splitlines(True)
         codec = PositionCodec(PositionEncodingKind.Utf16)
-        range = codec.range_from_client_units(lines, format_range)
-        start = format_range.start.character
-        end = format_range.end.character
+        format_range = codec.range_from_client_units(
+            document.source.splitlines(True), format_range
+        )
 
-        for index, line in enumerate(lines):
-            if index < range.start.line:
-                start += len(line)
-
-            if index < range.end.line:
-                end += len(line)
-            else:
-                break
-
-        argv.extend(["--range-start", str(start), "--range-end", str(end)])
+        argv.extend(
+            [
+                "--range",
+                f"{format_range.start.line + 1}:{format_range.start.character + 1}-{format_range.end.line + 1}:{format_range.end.character + 1}",  # noqa: E501
+            ]
+        )
 
     for arg in settings.get("format", {}).get("args", []):
         if arg in UNSUPPORTED_FORMAT_ARGS:

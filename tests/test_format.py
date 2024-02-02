@@ -91,13 +91,7 @@ print( "Formatted")
 print ("Not formatted")
 """
 
-    expected = """x   = 1
-
-
-print("Formatted")
-
-print ("Not formatted")
-"""
+    expected = """print("Formatted")\n"""
 
     test_file = tmp_path.joinpath("main.py")
     test_file.write_text(original)
@@ -128,3 +122,6 @@ print ("Not formatted")
             original_source=document.source, fixed_source=result.stdout.decode("utf-8")
         )
         assert edit.new_text == expected
+        assert edit.range == Range(
+            start=Position(line=3, character=0), end=Position(line=5, character=0)
+        )
