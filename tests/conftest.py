@@ -12,8 +12,8 @@ def _get_ruff_executable() -> Executable:
     # Use the ruff-lsp directory as the workspace
     workspace_path = str(Path(__file__).parent.parent)
 
-    settings = WorkspaceSettings(
-        **_get_global_defaults(),  # type: ignore[misc]
+    settings = WorkspaceSettings(  # type: ignore[misc]
+        **_get_global_defaults(),
         cwd=None,
         workspacePath=workspace_path,
         workspace=uris.from_fs_path(workspace_path),
