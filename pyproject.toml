@@ -59,6 +59,9 @@ path = "ruff_lsp/__init__.py"
 
 [tool.ruff]
 line-length = 88
+target-version = "py37"
+
+[tool.ruff.lint]
 select = [
   "E",
   "F",
@@ -70,7 +73,6 @@ select = [
   "T201",
   "T203",
 ]
-target-version = "py37"
 
 [tool.mypy]
 files = ["ruff_lsp", "tests"]
