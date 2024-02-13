@@ -127,12 +127,35 @@ LSP for certain capabilities, like `textDocument/hover`:
 
 ```lua
 local on_attach = function(client, bufnr)
-  -- Disable hover in favor of Pyright
-  client.server_capabilities.hoverProvider = false
+  if client.name == 'ruff_lsp' then
+    -- Disable hover in favor of Pyright
+    client.server_capabilities.hoverProvider = false
+  end
 end
 
 require('lspconfig').ruff_lsp.setup {
   on_attach = on_attach,
+}
+```
+
+And, if you'd like to use Ruff exclusively for linting, formatting, and organizing imports, you can
+disable those capabilities in Pyright:
+
+```lua
+require('lspconfig').pyright.setup {
+  on_attach = on_attach,
+  settings = {
+    pyright = {
+      -- Using Ruff's import organizer
+      disableOrganizeImports = true,
+    },
+    python = {
+      analysis = {
+        -- Ignore all files for analysis to exclusively use Ruff for linting
+        ignore = { '*' },
+      },
+    },
+  },
 }
 ```
 
