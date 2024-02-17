@@ -449,7 +449,7 @@ async def did_open(params: DidOpenTextDocumentParams) -> None:
     )
     settings = _get_settings_by_document(document.path)
     if not lint_enable(settings):
-        return
+        return None
 
     diagnostics = await _lint_document_impl(document, settings)
     LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
@@ -469,7 +469,7 @@ async def did_save(params: DidSaveTextDocumentParams) -> None:
     text_document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     settings = _get_settings_by_document(text_document.path)
     if not lint_enable(settings):
-        return
+        return None
 
     if lint_run(settings) in (
         Run.OnType,
@@ -486,7 +486,7 @@ async def did_change(params: DidChangeTextDocumentParams) -> None:
     text_document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     settings = _get_settings_by_document(text_document.path)
     if not lint_enable(settings):
-        return
+        return None
 
     if lint_run(settings) == Run.OnType:
         document = Document.from_text_document(text_document)
@@ -502,12 +502,12 @@ async def did_open_notebook(params: DidOpenNotebookDocumentParams) -> None:
     )
     if notebook_document is None:
         log_warning(f"No notebook document found for {params.notebook_document.uri!r}")
-        return
+        return None
 
     document = Document.from_notebook_document(notebook_document)
     settings = _get_settings_by_document(document.path)
     if not lint_enable(settings):
-        return
+        return None
 
     diagnostics = await _lint_document_impl(document, settings)
 
@@ -571,12 +571,12 @@ async def _did_change_or_save_notebook(
     )
     if notebook_document is None:
         log_warning(f"No notebook document found for {notebook_uri!r}")
-        return
+        return None
 
     document = Document.from_notebook_document(notebook_document)
     settings = _get_settings_by_document(document.path)
     if not lint_enable(settings):
-        return
+        return None
 
     if lint_run(settings) in run_types:
         cell_diagnostics = _group_diagnostics_by_cell(
@@ -1173,11 +1173,11 @@ async def apply_autofix(arguments: tuple[TextDocument]):
     document = Document.from_uri(uri)
     settings = _get_settings_by_document(document.path)
     if not lint_enable(settings):
-        return
+        return None
 
     workspace_edit = await _fix_document_impl(document, settings)
     if workspace_edit is None:
-        return
+        return None
     LSP_SERVER.apply_edit(workspace_edit, "Ruff: Fix all auto-fixable problems")
 
 
@@ -1188,7 +1188,7 @@ async def apply_organize_imports(arguments: tuple[TextDocument]):
     settings = _get_settings_by_document(document.path)
     workspace_edit = await _fix_document_impl(document, settings, only=["I001", "I002"])
     if workspace_edit is None:
-        return
+        return None
     LSP_SERVER.apply_edit(workspace_edit, "Ruff: Format imports")
 
 
@@ -1660,7 +1660,7 @@ def _update_workspace_settings(settings: list[WorkspaceSettings]) -> None:
             "workspacePath": workspace_path,
             "workspace": uris.from_fs_path(workspace_path),
         }
-        return
+        return None
 
     for setting in settings:
         if "workspace" in setting:
