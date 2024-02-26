@@ -182,7 +182,7 @@ Upon successful installation, you should see errors surfaced directly in your ed
 ### Example: Helix
 
 To use `ruff-lsp` with [Helix](https://helix-editor.com/), add something like the following to
-`~/.config/helix/languages.toml` (in this case with auto-save enabled):
+`~/.config/helix/languages.toml` (in this case with auto-format enabled):
 
 ```toml
 [language-server.ruff]
@@ -190,7 +190,7 @@ command = "ruff-lsp"
 [[language]]
 name = "python"
 language-servers = [ "ruff" ]
-auto-save = true
+auto-format = true
 ```
 
 Upon successful installation, you should see errors surfaced directly in your editor:
