@@ -290,6 +290,15 @@ the following settings are supported:
 - To run lint and type checks, run: `just check`.
 - To run tests, run: `just test`. This is just a wrapper around pytest, which you can use as usual.
 
+## Release
+
+- Bump the version in `ruff_lsp/__init__.py`.
+- Make sure you use Python 3.7 installed and as your default Python.
+- Run `python -m venv .venv` to create a venv and activate it.
+- Run `python -m pip install pip-tools` to install `pip-tools`.
+- Run `rm requirements.txt requirements-dev.txt` and then `just lock` to update ruff.
+- Create a PR, merge it and GitHub creates a release for you (don't forget to publish).
+
 ## License
 
 MIT
