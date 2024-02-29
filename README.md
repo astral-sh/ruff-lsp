@@ -182,11 +182,12 @@ Upon successful installation, you should see errors surfaced directly in your ed
 ### Example: Helix
 
 To use `ruff-lsp` with [Helix](https://helix-editor.com/), add something like the following to
-`~/.config/helix/languages.toml` (in this case with auto-format enabled):
+`~/.config/helix/languages.toml` (in this case, with `auto-format` enabled):
 
 ```toml
 [language-server.ruff]
 command = "ruff-lsp"
+
 [[language]]
 name = "python"
 language-servers = [ "ruff" ]
@@ -197,7 +198,8 @@ Upon successful installation, you should see errors surfaced directly in your ed
 
 ![](https://user-images.githubusercontent.com/1309177/209262106-71e34f8d-73cc-4889-89f7-3f54a4481c52.png)
 
-As of Helix 23.10, there is support for multiple language servers for language. This enables for instance, the use of `ruff-lsp` alongside a language server like `pyright`:
+As of v23.10, Helix supports the use of multiple language servers for a given language. This
+enables, for example, the use of `ruff-lsp` alongside a language server like `pyright`:
 
 ```toml
 [[language]]
