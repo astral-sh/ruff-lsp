@@ -297,7 +297,9 @@ the following settings are supported:
 - Run `python -m venv .venv` to create a venv and activate it.
 - Run `python -m pip install pip-tools` to install `pip-tools`.
 - Run `rm requirements.txt requirements-dev.txt` and then `just lock` to update ruff.
-- Create a PR, merge it and GitHub creates a release for you (don't forget to publish).
+- Create a new PR and merge it.
+- [Create a new Release](https://github.com/astral-sh/ruff-lsp/releases/new), enter `v0.0.x` (where `x` is the new version) into the *Choose a tag* selector. Click *Generate release notes*, curate the release notes and publish the release. 
+- The Release workflow publishes the LSP to PyPI.
 
 ## License
 
