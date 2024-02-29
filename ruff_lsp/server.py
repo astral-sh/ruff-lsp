@@ -154,6 +154,7 @@ VERSION_REQUIREMENT_EMPTY_OUTPUT = SpecifierSet(">=0.1.6")
 
 # Arguments provided to every Ruff invocation.
 CHECK_ARGS = [
+    "check",
     "--force-exclude",
     "--no-cache",
     "--no-fix",
