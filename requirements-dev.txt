@@ -10,9 +10,9 @@ attrs==23.2.0 \
     # via
     #   cattrs
     #   lsprotocol
-build==1.1.0 \
-    --hash=sha256:05a32cbae3f42b03d1592029237914c136a880de83bc2a0fcd4f09e1336ee695 \
-    --hash=sha256:f8da3eebb19668bb338b6eb256b1896ef4e87a5398bbdda97ee29ec474569f16
+build==1.1.1 \
+    --hash=sha256:8ed0851ee76e6e38adce47e4bee3b51c771d86c64cf578d0c2245567ee200e73 \
+    --hash=sha256:8eea65bb45b1aac2e734ba2cc8dad3a6d97d97901a395bd0ed3e7b46953d2a31
     # via pip-tools
 cattrs==23.1.2 \
     --hash=sha256:b2bb14311ac17bed0d58785e5a60f022e5431aca3932e3fc5cc8ed8639de50a4 \
