@@ -1765,6 +1765,8 @@ def _find_ruff_binary_path(settings: WorkspaceSettings) -> str:
 
     if settings["path"]:
         # 'path' setting takes priority over everything.
+        if isinstance(settings["path"], str):
+            path = [path]
         for path in settings["path"]:
             path = os.path.expanduser(os.path.expandvars(path))
             if os.path.exists(path):
