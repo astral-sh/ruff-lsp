@@ -66,9 +66,11 @@ including Neovim, Emacs, Sublime Text, and more.
 
 ### Example: Neovim
 
-To use `ruff-lsp` with Neovim, install `ruff-lsp` from PyPI along with `[nvim-lspconfig]`.
-lspconfig's suggested configuration can be found with `:h lspconfig-keybindings` (also available [online][lspconfig-suggested-config]).
-Configure lspconfig along with something like the following in your `init.lua`:
+To use `ruff-lsp` with Neovim, follow these steps:
+
+1. Install `ruff-lsp` from PyPI along with [`nvim-lspconfig`](https://github.com/neovim/nvim-lspconfig).
+2. Set up the Neovim LSP client using the [suggested configuration](https://github.com/neovim/nvim-lspconfig/tree/master#suggested-configuration) (`:h lspconfig-keybindings`).
+3. Finally, configure `ruff-lsp` in your `init.lua`:
 
 ```lua
 -- Configure `ruff-lsp`.
@@ -92,12 +94,15 @@ Note that if you're using Ruff alongside another LSP (like Pyright), you may wan
 LSP for certain capabilities, like `textDocument/hover`:
 
 ```lua
-
-require('lspconfig').ruff_lsp.setup {
-  on_attach = function(client, bufnr)
+local on_attach = function(client, bufnr)
+  if client.name == 'ruff_lsp' then
     -- Disable hover in favor of Pyright
     client.server_capabilities.hoverProvider = false
   end
+end
+
+require('lspconfig').ruff_lsp.setup {
+  on_attach = on_attach,
 }
 ```
 
@@ -131,9 +136,6 @@ Ruff also integrates with [`coc.nvim`](https://github.com/neoclide/coc.nvim/wiki
   }
 }
 ```
-
-[nvim-lspconfig]: https://github.com/neovim/nvim-lspconfig
-[lspconfig-suggested-config]: https://github.com/neovim/nvim-lspconfig/tree/master?tab=readme-ov-file#suggested-configuration
 
 ### Example: Sublime Text
 
