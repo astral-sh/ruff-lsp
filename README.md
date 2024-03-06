@@ -66,17 +66,15 @@ including Neovim, Emacs, Sublime Text, and more.
 
 ### Example: Neovim
 
-For example, to use `ruff-lsp` with Neovim, install `ruff-lsp` from PyPI along with
-[`nvim-lspconfig`](https://github.com/neovim/nvim-lspconfig). Then, add something like the following
-to your `init.lua`:
+To use `ruff-lsp` with Neovim, install `ruff-lsp` from PyPI along with `[nvim-lspconfig]`.
+lspconfig's suggested configuration can be found with `:h lspconfig-keybindings` (also available [online][lspconfig-suggested-config]).
+Configure lspconfig along with something like the following in your `init.lua`:
 
 ```lua
--- See: https://github.com/neovim/nvim-lspconfig/tree/01b25ff1a66745d29ff75952e9f605e45611746e?tab=readme-ov-file#suggested-configuration
 -- Configure `ruff-lsp`.
 -- See: https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#ruff_lsp
 -- For the default config, along with instructions on how to customize the settings
-local lspconfig = require('lspconfig')
-lspconfig.ruff_lsp.setup {
+require('lspconfig').ruff_lsp.setup {
   init_options = {
     settings = {
       -- Any extra CLI arguments for `ruff` go here.
@@ -84,45 +82,6 @@ lspconfig.ruff_lsp.setup {
     }
   }
 }
-
-
--- Global mappings.
--- See `:help vim.diagnostic.*` for documentation on any of the below functions
-vim.keymap.set('n', '<space>e', vim.diagnostic.open_float)
-vim.keymap.set('n', '[d', vim.diagnostic.goto_prev)
-vim.keymap.set('n', ']d', vim.diagnostic.goto_next)
-vim.keymap.set('n', '<space>q', vim.diagnostic.setloclist)
-
--- Use LspAttach autocommand to only map the following keys
--- after the language server attaches to the current buffer
-vim.api.nvim_create_autocmd('LspAttach', {
-  group = vim.api.nvim_create_augroup('UserLspConfig', {}),
-  callback = function(ev)
-    -- Enable completion triggered by <c-x><c-o>
-    vim.bo[ev.buf].omnifunc = 'v:lua.vim.lsp.omnifunc'
-
-    -- Buffer local mappings.
-    -- See `:help vim.lsp.*` for documentation on any of the below functions
-    local opts = { buffer = ev.buf }
-    vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
-    vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
-    vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
-    vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, opts)
-    vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, opts)
-    vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, opts)
-    vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, opts)
-    vim.keymap.set('n', '<space>wl', function()
-      print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
-    end, opts)
-    vim.keymap.set('n', '<space>D', vim.lsp.buf.type_definition, opts)
-    vim.keymap.set('n', '<space>rn', vim.lsp.buf.rename, opts)
-    vim.keymap.set({ 'n', 'v' }, '<space>ca', vim.lsp.buf.code_action, opts)
-    vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
-    vim.keymap.set('n', '<space>f', function()
-      vim.lsp.buf.format { async = true }
-    end, opts)
-  end,
-})
 ```
 
 Upon successful installation, you should see Ruff's diagnostics surfaced directly in your editor:
@@ -134,7 +93,7 @@ LSP for certain capabilities, like `textDocument/hover`:
 
 ```lua
 
-lspconfig.ruff_lsp.setup {
+require('lspconfig').ruff_lsp.setup {
   on_attach = function(client, bufnr)
     -- Disable hover in favor of Pyright
     client.server_capabilities.hoverProvider = false
@@ -146,7 +105,7 @@ And, if you'd like to use Ruff exclusively for linting, formatting, and organizi
 disable those capabilities in Pyright:
 
 ```lua
-lspconfig.pyright.setup {
+require('lspconfig').pyright.setup {
   settings = {
     pyright = {
       -- Using Ruff's import organizer
@@ -172,6 +131,9 @@ Ruff also integrates with [`coc.nvim`](https://github.com/neoclide/coc.nvim/wiki
   }
 }
 ```
+
+[nvim-lspconfig]: https://github.com/neovim/nvim-lspconfig
+[lspconfig-suggested-config]: https://github.com/neovim/nvim-lspconfig/tree/master?tab=readme-ov-file#suggested-configuration
 
 ### Example: Sublime Text
 
@@ -300,7 +262,7 @@ the following settings are supported:
 - Run `python -m pip install pip-tools` to install `pip-tools`.
 - Run `rm requirements.txt requirements-dev.txt` and then `just lock` to update ruff.
 - Create a new PR and merge it.
-- [Create a new Release](https://github.com/astral-sh/ruff-lsp/releases/new), enter `v0.0.x` (where `x` is the new version) into the *Choose a tag* selector. Click *Generate release notes*, curate the release notes and publish the release. 
+- [Create a new Release](https://github.com/astral-sh/ruff-lsp/releases/new), enter `v0.0.x` (where `x` is the new version) into the *Choose a tag* selector. Click *Generate release notes*, curate the release notes and publish the release.
 - The Release workflow publishes the LSP to PyPI.
 
 ## License
