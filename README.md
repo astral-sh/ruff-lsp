@@ -69,7 +69,7 @@ including Neovim, Emacs, Sublime Text, and more.
 To use `ruff-lsp` with Neovim, follow these steps:
 
 1. Install `ruff-lsp` from PyPI along with [`nvim-lspconfig`](https://github.com/neovim/nvim-lspconfig).
-2. Set up the Neovim LSP client using the [suggested configuration](https://github.com/neovim/nvim-lspconfig/tree/master#suggested-configuration) (`:h lspconfig-keybindings`).
+2. Set up the Neovim LSP client using the [suggested configuration](https://github.com/neovim/nvim-lspconfig/tree/master#configuration) (`:h lspconfig-keybindings`).
 3. Finally, configure `ruff-lsp` in your `init.lua`:
 
 ```lua
