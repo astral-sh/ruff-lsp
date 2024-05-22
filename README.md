@@ -6,6 +6,13 @@
 [![image](https://img.shields.io/pypi/pyversions/ruff-lsp.svg)](https://pypi.python.org/pypi/ruff-lsp)
 [![Actions status](https://github.com/astral-sh/ruff-lsp/workflows/CI/badge.svg)](https://github.com/astral-sh/ruff-lsp/actions)
 
+> [!NOTE]
+>
+> **As of Ruff v0.4.5, Ruff ships with a built-in language server written in Rust: ⚡ `ruff server` ⚡**
+>
+> **`ruff server` supports the same feature set as `ruff-lsp`, but with superior performance and no
+> installation required. `ruff server` is currently in Beta. We'd love your feedback.**
+
 A [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for
 [Ruff](https://github.com/astral-sh/ruff), an extremely fast Python linter and code formatter,
 written in Rust.
@@ -129,11 +136,15 @@ require('lspconfig').pyright.setup {
 Ruff also integrates with [`coc.nvim`](https://github.com/neoclide/coc.nvim/wiki/Language-servers#using-ruff-lsp):
 
 ```json
-"languageserver": {
-  "ruff-lsp": {
-    "command": "ruff-lsp",
-    "filetypes": ["python"]
-  }
+{
+    "languageserver": {
+        "ruff-lsp": {
+            "command": "ruff-lsp",
+            "filetypes": [
+                "python"
+            ]
+        }
+    }
 }
 ```
 
