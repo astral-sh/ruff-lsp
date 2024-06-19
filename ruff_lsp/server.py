@@ -1016,7 +1016,7 @@ async def code_action(params: CodeActionParams) -> list[CodeAction] | None:
             )
             lines: list[str] | None = None
             for diagnostic in params.context.diagnostics:
-                if diagnostic.source == "Ruff":
+                if diagnostic.source == "Ruff" and diagnostic.code != "E999":
                     noqa_row = cast(DiagnosticData, diagnostic.data).get("noqa_row")
                     if noqa_row is not None:
                         if lines is None:
