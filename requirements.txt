@@ -18,9 +18,9 @@ exceptiongroup==1.2.1 \
     --hash=sha256:5258b9ed329c5bbdd31a309f53cbfb0b155341807f6ff7606a1e801a891b29ad \
     --hash=sha256:a4785e48b045528f5bfe627b6ad554ff32def154f42372786903b7abcfe1aa16
     # via cattrs
-importlib-metadata==6.7.0 \
-    --hash=sha256:1aaf550d4f73e5d6783e7acb77aec43d49da8017410afae93822cc9cca98c4d4 \
-    --hash=sha256:cb52082e659e97afc5dac71e79de97d8681de3aa07ff18578330904a9d18e5b5
+importlib-metadata==7.2.1 \
+    --hash=sha256:509ecb2ab77071db5137c655e24ceb3eee66e7bbc6574165d0d114d9fc4bbe68 \
+    --hash=sha256:ffef94b0b66046dd8ea2d619b701fe978d9264d38f3998bc4c27ec3b146a87c8
     # via attrs
 lsprotocol==2023.0.1 \
     --hash=sha256:c75223c9e4af2f24272b14c6375787438279369236cd568f596d4951052a60f2 \
