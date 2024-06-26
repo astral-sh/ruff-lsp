@@ -259,6 +259,7 @@ the following settings are supported:
 | logLevel                             | `error`  | Sets the tracing level for the extension: `error`, `warn`, `info`, or `debug`.                                                                                                                                                                                     |
 | organizeImports                      | `true`   | Whether to register Ruff as capable of handling `source.organizeImports` actions.                                                                                                                                                                                  |
 | path                                 | `[]`     | Path to a custom `ruff` executable, e.g., `["/path/to/ruff"]`.                                                                                                                                                                                                     |
+| showSyntaxErrors                     | `true`   | Whether to show syntax error diagnostics. _New in Ruff v0.5.0_                                                                                                                                                                                                     |
 
 ## Development
 
