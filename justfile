@@ -19,4 +19,4 @@ check:
   uv run --dev -- mypy ./ruff_lsp ./tests
 
 test:
-  uv run --dev -- pytest
+  uv run --dev --verbose -- pytest
