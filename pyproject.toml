@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ruff-lsp"
-dynamic = ["version"]
+version = "0.0.53"
 description = "A Language Server Protocol implementation for Ruff."
 authors = [
   { name = "Charlie Marsh", email = "charlie.r.marsh@gmail.com" },
@@ -12,7 +12,7 @@ authors = [
 maintainers = [
   { name = "Charlie Marsh", email = "charlie.r.marsh@gmail.com" },
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.7.9"
 license = "MIT"
 keywords = ["ruff", "lsp", "language-server", "language-server-protocol", "python"]
 classifiers = [
@@ -34,6 +34,7 @@ classifiers = [
   "Topic :: Utilities",
 ]
 urls = { repository = "https://github.com/astral-sh/ruff-lsp" }
+scripts = { ruff-lsp = "ruff_lsp.__main__:main" }
 dependencies = [
   "packaging>=23.1",
   "pygls>=1.1.0",
@@ -42,20 +43,14 @@ dependencies = [
   "typing_extensions",
 ]
 
-[project.optional-dependencies]
-dev = [
+[tool.uv]
+dev-dependencies = [
   "mypy==1.4.1",
   "pip-tools>=6.13.0,<7.0.0",
   "pytest>=7.3.1,<8.0.0",
   "pytest-asyncio==0.21.2",
   "python-lsp-jsonrpc==1.0.0",
 ]
-
-[project.scripts]
-ruff-lsp = "ruff_lsp.__main__:main"
-
-[tool.hatch.version]
-path = "ruff_lsp/__init__.py"
 
 [tool.ruff]
 line-length = 88

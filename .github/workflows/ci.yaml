@@ -2,6 +2,7 @@ name: CI
 
 env:
   RUFF_UNRELEASED_REF: "main"
+  UV_SYSTEM_PYTHON: "true"
 
 on:
   push:
@@ -21,13 +22,9 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-          cache: "pip"
-          cache-dependency-path: |
-            pyproject.toml
-            requirements.txt
-            requirements-dev.txt
+      - uses: hynek/setup-cached-uv@v1
       - name: Install dependencies
-        run: just install
+        run: just sync
       - name: Run checks
         run: just check
   ruff-versions:
@@ -88,28 +85,21 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
-          cache-dependency-path: |
-            pyproject.toml
-            requirements.txt
-            requirements-dev.txt
+      - uses: hynek/setup-cached-uv@v1
 
       - name: Install dependencies
-        run: |
-          pip install -U pip
-          just install
+        run: just sync
 
       - name: Install test Ruff version from PyPI
         if: ${{ matrix.ruff-version != env.RUFF_UNRELEASED_REF }}
         run: |
-          pip install ruff==${{ matrix.ruff-version }}
+          uv pip install --reinstall ruff==${{ matrix.ruff-version }}
           ruff --version
 
       - name: "Install test Ruff version from GitHub"
         if: ${{ matrix.ruff-version == env.RUFF_UNRELEASED_REF }}
         run: |
-          pip install --force-reinstall git+https://github.com/astral-sh/ruff@${{ matrix.ruff-version }}
-          pip show ruff
+          uv pip install --reinstall "ruff @ git+https://github.com/astral-sh/ruff@${{ matrix.ruff-version }}"
           ruff version
 
       - name: Run tests
