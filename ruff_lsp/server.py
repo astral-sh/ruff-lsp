@@ -614,7 +614,11 @@ async def _lint_document_impl(
             show_error(f"Ruff: Lint failed ({result.stderr.decode('utf-8')})")
         return []
 
-    return _parse_output(result.stdout) if result.stdout else []
+    return (
+        _parse_output(result.stdout, settings.get("showSyntaxErrors", True))
+        if result.stdout
+        else []
+    )
 
 
 def _parse_fix(content: Fix | LegacyFix | None) -> Fix | None:
@@ -649,7 +653,7 @@ def _parse_fix(content: Fix | LegacyFix | None) -> Fix | None:
         return fix
 
 
-def _parse_output(content: bytes) -> list[Diagnostic]:
+def _parse_output(content: bytes, show_syntax_errors: bool) -> list[Diagnostic]:
     """Parse Ruff's JSON output."""
     diagnostics: list[Diagnostic] = []
 
@@ -700,6 +704,8 @@ def _parse_output(content: bytes) -> list[Diagnostic]:
     # Cell represents the cell number in a Notebook Document. It is null for normal
     # Python files.
     for check in json.loads(content):
+        if not show_syntax_errors and check["code"] is None:
+            continue
         start = Position(
             line=max([int(check["location"]["row"]) - 1, 0]),
             character=int(check["location"]["column"]) - 1,
@@ -750,6 +756,7 @@ def _get_severity(code: str) -> DiagnosticSeverity:
         "F821",  # undefined name `name`
         "E902",  # `IOError`
         "E999",  # `SyntaxError`
+        None,  # `SyntaxError` as of Ruff v0.5.0
     }:
         return DiagnosticSeverity.Error
     else:

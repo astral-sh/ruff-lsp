@@ -49,6 +49,9 @@ class UserSettings(TypedDict, total=False):
     ignoreStandardLibrary: bool
     """Whether to ignore files that are inferred to be part of the standard library."""
 
+    showSyntaxErrors: bool
+    """Whether to show syntax error diagnostics."""
+
     # Deprecated: use `lint.args` instead.
     args: list[str]
     """Additional command-line arguments to pass to `ruff check`."""
