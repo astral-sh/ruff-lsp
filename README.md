@@ -11,9 +11,9 @@
 > **As of Ruff v0.4.5, Ruff ships with a built-in language server written in Rust: ⚡ `ruff server` ⚡**
 >
 > **`ruff server` supports the same feature set as `ruff-lsp`, but with superior performance and no
-> installation required. `ruff server` is currently in Beta. We'd love your feedback.**
-> 
-> **See the [setup guide](https://github.com/astral-sh/ruff/tree/main/crates/ruff_server#setup) for more.**
+> installation required. `ruff server` was marked as stable in Ruff v0.5.3.**
+>
+> **See the [documentation](https://docs.astral.sh/ruff/server/) for more.**
 
 A [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for
 [Ruff](https://github.com/astral-sh/ruff), an extremely fast Python linter and code formatter,
