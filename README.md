@@ -13,7 +13,7 @@
 > **`ruff server` supports the same feature set as `ruff-lsp`, but with superior performance and no
 > installation required. `ruff server` was marked as stable in Ruff v0.5.3.**
 >
-> **See the [documentation](https://docs.astral.sh/ruff/server/) for more.**
+> **See the [documentation](https://docs.astral.sh/ruff/editors/) for more.**
 
 A [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for
 [Ruff](https://github.com/astral-sh/ruff), an extremely fast Python linter and code formatter,
