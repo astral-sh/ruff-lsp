@@ -108,9 +108,9 @@ pytest==7.4.4 \
     # via
     #   pytest-asyncio
     #   ruff-lsp (pyproject.toml)
-pytest-asyncio==0.21.2 \
-    --hash=sha256:ab664c88bb7998f711d8039cacd4884da6430886ae8bbd4eded552ed2004f16b \
-    --hash=sha256:d67738fc232b94b326b9d060750beb16e0074210b98dd8b58a5239fa2a154f45
+pytest-asyncio==0.24.0 \
+    --hash=sha256:a811296ed596b69bf0b6f3dc40f83bcaf341b155a269052d82efa2b25ac7037b \
+    --hash=sha256:d081d828e576d85f875399194281e92bf8a68d60d72d1a2faf2feddb6c46b276
     # via ruff-lsp (pyproject.toml)
 python-lsp-jsonrpc==1.0.0 \
     --hash=sha256:079b143be64b0a378bdb21dff5e28a8c1393fe7e8a654ef068322d754e545fc7 \
