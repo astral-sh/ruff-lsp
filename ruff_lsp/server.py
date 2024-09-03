@@ -394,7 +394,7 @@ def _create_notebook_json(notebook_document: NotebookDocument) -> str:
             cells.append(
                 {
                     "cell_type": "code",
-                    "metadata": None,
+                    "metadata": {},
                     "outputs": [],
                     "source": cell_document.source,
                 }
@@ -403,7 +403,7 @@ def _create_notebook_json(notebook_document: NotebookDocument) -> str:
             cells.append(
                 {
                     "cell_type": "markdown",
-                    "metadata": None,
+                    "metadata": {},
                     "source": cell_document.source,
                 }
             )
