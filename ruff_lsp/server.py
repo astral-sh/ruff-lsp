@@ -428,7 +428,7 @@ def _create_single_cell_notebook_json(source: str) -> str:
             "cells": [
                 {
                     "cell_type": "code",
-                    "metadata": None,
+                    "metadata": {},
                     "outputs": [],
                     "source": source,
                 }
