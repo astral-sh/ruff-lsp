@@ -136,9 +136,9 @@ ruff==0.7.1 \
     --hash=sha256:cb1bc5ed9403daa7da05475d615739cc0212e861b7306f314379d958592aaa89 \
     --hash=sha256:f38c41fcde1728736b4eb2b18850f6d1e3eedd9678c914dede554a70d5241307
     # via ruff-lsp (pyproject.toml)
-tomli==2.0.1 \
-    --hash=sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc \
-    --hash=sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f
+tomli==2.1.0 \
+    --hash=sha256:3f646cae2aec94e17d04973e4249548320197cfabdf130015d023de4b74d8ab8 \
+    --hash=sha256:a5c57c3d1c56f5ccdf89f6523458f60ef716e210fc47c4cfb188c5ba473e0391
     # via
     #   build
     #   mypy
