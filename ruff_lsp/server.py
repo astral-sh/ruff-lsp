@@ -1590,8 +1590,7 @@ def initialize(params: InitializeParams) -> None:
         f"{json.dumps(workspace_settings, indent=4, ensure_ascii=False)}"
     )
     log_to_output(
-        f"Global settings: "
-        f"{json.dumps(global_settings, indent=4, ensure_ascii=False)}"
+        f"Global settings: {json.dumps(global_settings, indent=4, ensure_ascii=False)}"
     )
 
     # Preserve any "global" settings.
