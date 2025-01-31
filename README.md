@@ -6,6 +6,14 @@
 [![image](https://img.shields.io/pypi/pyversions/ruff-lsp.svg)](https://pypi.python.org/pypi/ruff-lsp)
 [![Actions status](https://github.com/astral-sh/ruff-lsp/workflows/CI/badge.svg)](https://github.com/astral-sh/ruff-lsp/actions)
 
+> [!WARNING]
+>
+> **`ruff-lsp` is deprecated. Please switch to the native language server
+> (`ruff server`). Refer to the [migration
+> guide](https://docs.astral.sh/ruff/editors/migration/) on how to migrate the
+> settings and [setup guide](https://docs.astral.sh/ruff/editors/setup/) for
+> editor-specific setup instructions.**
+
 > [!NOTE]
 >
 > **As of Ruff v0.4.5, Ruff ships with a built-in language server written in Rust: ⚡ `ruff server` ⚡**

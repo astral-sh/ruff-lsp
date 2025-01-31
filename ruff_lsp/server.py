@@ -1570,6 +1570,15 @@ async def run_path(
 @LSP_SERVER.feature(INITIALIZE)
 def initialize(params: InitializeParams) -> None:
     """LSP handler for initialize request."""
+    show_warning(
+        "`ruff-lsp` is deprecated. Please switch to the native language server "
+        "(`ruff server`). Refer to the "
+        "[migration guide](https://docs.astral.sh/ruff/editors/migration/) on how to "
+        "migrate the settings and "
+        "[setup guide](https://docs.astral.sh/ruff/editors/setup/) for editor-specific "
+        "setup instructions."
+    )
+
     # Extract client capabilities.
     CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE] = _supports_code_action_resolve(
         params.capabilities
@@ -1993,6 +2002,12 @@ def show_error(message: str) -> None:
     """Show a pop-up with an error. Only use for critical errors."""
     LSP_SERVER.show_message_log(message, MessageType.Error)
     LSP_SERVER.show_message(message, MessageType.Error)
+
+
+def show_warning(message: str) -> None:
+    """Show a pop-up with a warning."""
+    LSP_SERVER.show_message_log(message, MessageType.Warning)
+    LSP_SERVER.show_message(message, MessageType.Warning)
 
 
 def log_warning(message: str) -> None:
