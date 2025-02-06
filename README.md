@@ -1,10 +1,11 @@
 > [!WARNING]
 >
 > **`ruff-lsp` is deprecated. Please switch to the native language server
-> (`ruff server`). Refer to the [migration
+> (`ruff server`). Refer to the [setup
+> guide](https://docs.astral.sh/ruff/editors/setup/) on how to set up the
+> native language server and the [migration
 > guide](https://docs.astral.sh/ruff/editors/migration/) on how to migrate the
-> settings and [setup guide](https://docs.astral.sh/ruff/editors/setup/) for
-> editor-specific setup instructions.**
+> settings.**
 
 # ruff-lsp
 
