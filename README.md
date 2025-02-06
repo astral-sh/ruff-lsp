@@ -1,3 +1,16 @@
+> [!WARNING]
+>
+> **`ruff-lsp` is deprecated. Please switch to the native language server
+> (`ruff server`). Refer to the [setup
+> guide](https://docs.astral.sh/ruff/editors/setup/) on how to set up the
+> native language server and the [migration
+> guide](https://docs.astral.sh/ruff/editors/migration/) on how to migrate the
+> settings.**
+>
+> **Feel free to comment on the [GitHub
+> discussion](https://github.com/astral-sh/ruff/discussions/15991) to ask
+> questions or share feedback.**
+
 # ruff-lsp
 
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)

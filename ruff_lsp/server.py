@@ -151,6 +151,9 @@ VERSION_REQUIREMENT_RANGE_FORMATTING = SpecifierSet(">=0.2.1")
 VERSION_REQUIREMENT_OUTPUT_FORMAT = SpecifierSet(">=0.0.291")
 # Version requirement after which Ruff avoids writing empty output for excluded files.
 VERSION_REQUIREMENT_EMPTY_OUTPUT = SpecifierSet(">=0.1.6")
+# Version requirement to display the deprecation warning for `ruff-lsp` and start
+# recommending `ruff server` instead.
+VERSION_REQUIREMENT_NATIVE_SERVER = SpecifierSet(">=0.3.5")
 
 # Arguments provided to every Ruff invocation.
 CHECK_ARGS = [
@@ -1613,6 +1616,24 @@ def initialize(params: InitializeParams) -> None:
 
     _update_workspace_settings(settings)
 
+    # Use the Ruff executable from the first workspace to determine when to show the
+    # deprecation warning.
+    executable = _find_ruff_binary(
+        next(iter(WORKSPACE_SETTINGS.values())), version_requirement=None
+    )
+
+    if VERSION_REQUIREMENT_NATIVE_SERVER.contains(executable.version, prereleases=True):
+        show_warning(
+            "`ruff-lsp` is deprecated. Please switch to the native language server "
+            "(`ruff server`). Refer to the "
+            "[setup guide](https://docs.astral.sh/ruff/editors/setup/) on how to set "
+            "up the native language server and the "
+            "[migration guide](https://docs.astral.sh/ruff/editors/migration/) on how "
+            "to migrate the settings. Feel free to comment on the "
+            "[GitHub discussion](https://github.com/astral-sh/ruff/discussions/15991) "
+            "to ask questions or share feedback."
+        )
+
 
 def _supports_code_action_resolve(capabilities: ClientCapabilities) -> bool:
     """Returns True if the client supports codeAction/resolve request for edits."""
@@ -1993,6 +2014,12 @@ def show_error(message: str) -> None:
     """Show a pop-up with an error. Only use for critical errors."""
     LSP_SERVER.show_message_log(message, MessageType.Error)
     LSP_SERVER.show_message(message, MessageType.Error)
+
+
+def show_warning(message: str) -> None:
+    """Show a pop-up with a warning."""
+    LSP_SERVER.show_message_log(message, MessageType.Warning)
+    LSP_SERVER.show_message(message, MessageType.Warning)
 
 
 def log_warning(message: str) -> None:
