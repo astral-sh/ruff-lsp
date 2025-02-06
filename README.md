@@ -6,6 +6,10 @@
 > native language server and the [migration
 > guide](https://docs.astral.sh/ruff/editors/migration/) on how to migrate the
 > settings.**
+>
+> **Feel free to comment on the [GitHub
+> discussion](https://github.com/astral-sh/ruff/discussions/15991) to ask
+> questions or share feedback.**
 
 # ruff-lsp
 
