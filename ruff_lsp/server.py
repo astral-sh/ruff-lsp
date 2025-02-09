@@ -1616,23 +1616,23 @@ def initialize(params: InitializeParams) -> None:
 
     _update_workspace_settings(settings)
 
-    # Use the Ruff executable from the first workspace to determine when to show the
-    # deprecation warning.
-    executable = _find_ruff_binary(
-        next(iter(WORKSPACE_SETTINGS.values())), version_requirement=None
-    )
+    if (
+        params.client_info is not None
+        and params.client_info.name == "Visual Studio Code"
+    ):
+        # The extension is responsible for providing the deprecation warning.
+        return
 
-    if VERSION_REQUIREMENT_NATIVE_SERVER.contains(executable.version, prereleases=True):
-        show_warning(
-            "`ruff-lsp` is deprecated. Please switch to the native language server "
-            "(`ruff server`). Refer to the "
-            "[setup guide](https://docs.astral.sh/ruff/editors/setup/) on how to set "
-            "up the native language server and the "
-            "[migration guide](https://docs.astral.sh/ruff/editors/migration/) on how "
-            "to migrate the settings. Feel free to comment on the "
-            "[GitHub discussion](https://github.com/astral-sh/ruff/discussions/15991) "
-            "to ask questions or share feedback."
-        )
+    show_warning(
+        "`ruff-lsp` is deprecated. Please switch to the native language server "
+        "(`ruff server`). Refer to the "
+        "[setup guide](https://docs.astral.sh/ruff/editors/setup/) on how to set "
+        "up the native language server and the "
+        "[migration guide](https://docs.astral.sh/ruff/editors/migration/) on how "
+        "to migrate the settings. Feel free to comment on the "
+        "[GitHub discussion](https://github.com/astral-sh/ruff/discussions/15991) "
+        "to ask questions or share feedback."
+    )
 
 
 def _supports_code_action_resolve(capabilities: ClientCapabilities) -> bool:
