@@ -1616,10 +1616,7 @@ def initialize(params: InitializeParams) -> None:
 
     _update_workspace_settings(settings)
 
-    if (
-        params.client_info is not None
-        and params.client_info.name == "Visual Studio Code"
-    ):
+    if os.getenv("LS_SHOW_DEPRECATION_WARNING") == "False":
         # The extension is responsible for providing the deprecation warning.
         return
 
