@@ -12,7 +12,7 @@ authors = [
 maintainers = [
   { name = "Charlie Marsh", email = "charlie.r.marsh@gmail.com" },
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = "MIT"
 keywords = ["ruff", "lsp", "language-server", "language-server-protocol", "python"]
 classifiers = [
@@ -20,7 +20,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
@@ -59,7 +58,7 @@ path = "ruff_lsp/__init__.py"
 
 [tool.ruff]
 line-length = 88
-target-version = "py37"
+target-version = "py38"
 
 [tool.ruff.lint]
 select = [
