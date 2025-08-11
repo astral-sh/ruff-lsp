@@ -56,9 +56,9 @@ ruff==0.9.6 \
     --hash=sha256:d1bbc6808bf7b15796cef0815e1dfb796fbd383e7dbd4334709642649625e7c5 \
     --hash=sha256:dc61dd5131742e21103fbbdcad683a8813be0e3c204472d520d9a5021ca8b217
     # via ruff-lsp (pyproject.toml)
-typing-extensions==4.7.1 \
-    --hash=sha256:440d5dd3af93b060174bf433bccd69b0babc3b15b1a8dca43789fd7f61514b36 \
-    --hash=sha256:b75ddc264f0ba5615db7ba217daeb99701ad295353c45f9e95963337ceeeffb2
+typing-extensions==4.14.1 \
+    --hash=sha256:38b39f4aeeab64884ce9f74c94263ef78f3c22467c8724005483154c26648d36 \
+    --hash=sha256:d1e1e3b58374dc93031d6eda2420a48ea44a36c2b4766a4fdeb3710755731d76
     # via
     #   cattrs
     #   importlib-metadata
