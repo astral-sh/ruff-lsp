@@ -286,7 +286,7 @@ the following settings are supported:
 ## Release
 
 - Bump the version in `ruff_lsp/__init__.py`.
-- Make sure you use Python 3.8 installed and as your default Python.
+- Make sure you use Python 3.7 installed and as your default Python.
 - Run `python -m venv .venv` to create a venv and activate it.
 - Run `python -m pip install pip-tools` to install `pip-tools`.
 - Run `rm requirements.txt requirements-dev.txt` and then `just lock` to update ruff.
