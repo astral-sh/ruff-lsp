@@ -7,12 +7,16 @@ on:
 env:
   PYTHON_VERSION: "3.11"
 
+permissions: {}
+
 jobs:
   release:
     runs-on: "ubuntu-latest"
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4.9.1
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install Hatch
@@ -20,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: hatch build
       - name: Publish to PyPi
-        if: "startsWith(github.ref, 'refs/tags/')"
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           HATCH_INDEX_USER: __token__
           HATCH_INDEX_AUTH: ${{ secrets.RUFF_LSP_TOKEN }}
