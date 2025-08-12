@@ -1,10 +1,5 @@
 version: 2
 updates:
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "daily"
-      time: "12:00"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
